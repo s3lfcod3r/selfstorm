@@ -1,0 +1,8 @@
+{
+  "_hinweis": "Deine Orte für den persönlichen Warner. lat/lon = Koordinaten. Weitere Orte einfach als weiteres Objekt ergänzen.",
+  "notifyLevel": 3,
+  "forecastDays": 3,
+  "locations": [
+    { "name": "Hamburg-Rahlstedt (22145)", "lat": 53.6, "lon": 10.15 }
+  ]
+}
