@@ -57,6 +57,14 @@
   .wordmark .w-name{color:var(--self-teal)}
   .tagline{color:var(--muted);margin:12px 0 0;max-width:52ch;font-size:.98rem}
   .tagline b{color:var(--text);font-weight:600}
+  .maplink{
+    display:inline-flex;align-items:center;gap:8px;margin-top:14px;
+    background:var(--surface);border:1px solid var(--border-strong);color:var(--text);
+    text-decoration:none;padding:9px 15px;border-radius:999px;font-size:.9rem;font-weight:600;
+    transition:border-color .2s var(--ease),background .2s var(--ease);
+  }
+  .maplink:hover{border-color:var(--teal);background:var(--surface-2)}
+  .maplink .arrow{color:var(--teal)}
 
   /* Search */
   .search{margin:26px 0 8px;position:relative}
@@ -173,6 +181,7 @@
       <span class="wordmark"><span class="w-self">Self</span><span class="w-name">Storm</span></span>
     </div>
     <p class="tagline"><b>Deine Unwetter- und Hagel-Ampel.</b> Mehrere Wettermodelle werden ehrlich gegeneinander gerechnet — für deine Orte. Kostenlos, kein Konto, deine Orte bleiben in deinem Browser.</p>
+    <a class="maplink" href="karte.html">Deutschland-Karte im Zeitraffer <span class="arrow">→</span></a>
   </header>
 
   <section class="search">
