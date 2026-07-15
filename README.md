@@ -1,6 +1,8 @@
 <div align="center">
 
-# ⛈️ SelfStorm
+<img src="assets/shield.png" alt="SelfStorm" width="96" />
+
+# SelfStorm
 
 **Deine Unwetter- und Hagel-Ampel — mehrere Wettermodelle, ehrlich gegeneinander gerechnet.**
 _Your severe-weather & hail traffic light — multiple weather models, honestly cross-checked._
