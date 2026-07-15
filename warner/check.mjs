@@ -21,23 +21,50 @@ const NTFY_TOPIC = process.env.NTFY_TOPIC || "";
 
 const num = v => (v == null || Number.isNaN(v)) ? 0 : v;
 
+const HAZ_ADVICE = {
+  "Hagel": "Auto möglichst unterstellen oder schützen.",
+  "Gewitter": "Bei Gewitter drinnen bleiben, Loses draußen sichern.",
+  "Gewittergefahr": "Kräftige Gewitter mit Hagel möglich — Lage beobachten.",
+  "Gewitter möglich": "Einzelne Gewitter möglich.",
+  "Orkanböen": "Sturmgefahr — Loses sichern, Bäume/Gerüste meiden.",
+  "Sturmböen": "Loses draußen sichern, im Wald aufpassen.",
+  "Windböen": "Vereinzelt kräftige Böen.",
+  "Starkregen": "Überflutung und Aquaplaning möglich.",
+  "kräftiger Regen": "Zeitweise kräftiger Regen.",
+  "starke Hitze": "Große Hitze — viel trinken, Mittagssonne meiden.",
+  "Hitze": "Warm — viel trinken, Schatten suchen.",
+  "Glatteis": "Glatteis durch gefrierenden Regen — sehr vorsichtig fahren und gehen.",
+  "Glättegefahr": "Rutschgefahr durch Glätte.",
+  "strenger Frost": "Strenger Frost — Frostschutz beachten.",
+  "Frost": "Frost — Glätte und Kälte möglich.",
+  "starker Schneefall": "Starker Schneefall — Behinderungen und Glätte.",
+  "Schneefall": "Schneefall — mögliche Glätte.",
+  "dichter Nebel": "Dichter Nebel — sehr schlechte Sicht im Verkehr.",
+  "Nebel": "Nebel — schlechte Sicht."
+};
+
 function analyze(fc) {
-  const h = fc.hourly, t = h.time, out = { events: [], peak: 0, peakTime: null, tags: new Set() };
+  const h = fc.hourly, t = h.time, out = { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set() };
   for (let i = 0; i < t.length; i++) {
     const code = h.weather_code[i], cape = num(h.cape[i]), gust = num(h.wind_gusts_10m[i]),
-          pr = num(h.precipitation[i]), pp = num(h.precipitation_probability[i]);
-    let lv = 0; const tags = [];
-    if (code === 96 || code === 99) { lv = Math.max(lv, 4); tags.push("Hagel"); }
-    else if (code === 95) { lv = Math.max(lv, cape >= 1500 ? 4 : 3); tags.push("Gewitter"); }
-    if (cape >= 1200) { lv = Math.max(lv, 3); tags.push("sehr labil"); }
-    else if (cape >= 800) { lv = Math.max(lv, 2); tags.push("labil"); }
-    if (gust >= 90) { lv = Math.max(lv, 4); tags.push("Orkanböen"); }
-    else if (gust >= 70) { lv = Math.max(lv, 3); tags.push("Sturmböen"); }
-    else if (gust >= 55) { lv = Math.max(lv, 2); tags.push("Windböen"); }
-    if (pr >= 15) { lv = Math.max(lv, 3); tags.push("Starkregen"); }
-    else if (pr >= 5) { lv = Math.max(lv, 2); tags.push("kräftiger Regen"); }
-    if (lv >= 2) { out.events.push({ time: t[i], code, cape, gust, lv }); tags.forEach(x => out.tags.add(x)); }
-    if (lv > out.peak) { out.peak = lv; out.peakTime = t[i]; }
+          pr = num(h.precipitation[i]), temp = num(h.temperature_2m && h.temperature_2m[i]),
+          snow = num(h.snowfall && h.snowfall[i]), vis = num(h.visibility && h.visibility[i]);
+    const hits = [];
+    if (code === 96 || code === 99) hits.push([4, "Hagel"]);
+    else if (code === 95) hits.push([cape >= 1500 ? 4 : 3, "Gewitter"]);
+    if (cape >= 1200) hits.push([3, "Gewittergefahr"]); else if (cape >= 800) hits.push([2, "Gewitter möglich"]);
+    if (gust >= 90) hits.push([4, "Orkanböen"]); else if (gust >= 70) hits.push([3, "Sturmböen"]); else if (gust >= 55) hits.push([2, "Windböen"]);
+    if (pr >= 15) hits.push([3, "Starkregen"]); else if (pr >= 5) hits.push([2, "kräftiger Regen"]);
+    if (temp >= 36) hits.push([3, "starke Hitze"]); else if (temp >= 30) hits.push([2, "Hitze"]);
+    if (code === 66 || code === 67) hits.push([3, "Glatteis"]); else if (temp <= 1 && temp >= -3 && pr >= 0.1) hits.push([2, "Glättegefahr"]);
+    if (temp <= -10) hits.push([3, "strenger Frost"]); else if (temp <= -5) hits.push([2, "Frost"]);
+    if (snow >= 5 || code === 75 || code === 86) hits.push([3, "starker Schneefall"]); else if (snow >= 1 || code === 71 || code === 73 || code === 85) hits.push([2, "Schneefall"]);
+    if (vis > 0 && vis < 200) hits.push([3, "dichter Nebel"]); else if ((vis > 0 && vis < 1000) || code === 45 || code === 48) hits.push([2, "Nebel"]);
+    if (!hits.length) continue;
+    hits.sort((a, b) => b[0] - a[0]);
+    const lv = hits[0][0], label = hits[0][1];
+    if (lv >= 2) { out.events.push({ time: t[i], lv, label }); hits.forEach(x => out.tags.add(x[1])); }
+    if (lv > out.peak) { out.peak = lv; out.peakTime = t[i]; out.peakLabel = label; }
   }
   return out;
 }
@@ -50,12 +77,9 @@ function fmtWhen(t) {
 const LEVEL = ["Ruhig", "Ruhig", "Beobachten", "Warnung", "Unwetter"];
 
 function verdict(a) {
-  const when = fmtWhen(a.peakTime);
-  const hail = a.tags.has("Hagel");
-  if (a.peak === 4) return (hail ? "Hagelgefahr" : "Unwettergefahr") + " — Schwerpunkt " + when +
-    ". " + (hail ? "Auto möglichst unterstellen oder schützen." : "Empfindliches im Freien sichern.");
-  if (a.peak === 3) return "Gewitter-/Sturmgefahr — Schwerpunkt " + when + ". Lage im Auge behalten.";
-  return "Leicht labile Lage — Schwerpunkt " + when + ".";
+  const when = fmtWhen(a.peakTime), lbl = a.peakLabel, advice = HAZ_ADVICE[lbl] || "";
+  const kind = a.peak === 4 ? " (Unwetter)" : "";
+  return `${lbl}${kind} — Schwerpunkt ${when}.${advice ? " " + advice : ""}`;
 }
 
 async function sendNtfy(title, body, level) {
@@ -87,7 +111,7 @@ const alerts = [];
 for (const loc of cfg.locations) {
   const p = new URLSearchParams({
     latitude: loc.lat, longitude: loc.lon,
-    hourly: "precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code",
+    hourly: "temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
     timezone: "auto", forecast_days: String(cfg.forecastDays || 3)
   });
   let fc;
