@@ -24,7 +24,7 @@ const num = v => (v == null || Number.isNaN(v)) ? 0 : v;
 const HAZ_ADVICE = {
   "Hagel": "Auto möglichst unterstellen oder schützen.",
   "Gewitter": "Bei Gewitter drinnen bleiben, Loses draußen sichern.",
-  "Gewittergefahr": "Kräftige Gewitter mit Hagel möglich — Lage beobachten.",
+  "Hagel möglich": "Kräftige Gewitter, Hagel möglich — Auto lieber unterstellen.",
   "Gewitter möglich": "Einzelne Gewitter möglich.",
   "Orkanböen": "Sturmgefahr — Loses sichern, Bäume/Gerüste meiden.",
   "Sturmböen": "Loses draußen sichern, im Wald aufpassen.",
@@ -52,7 +52,7 @@ function analyze(fc) {
     const hits = [];
     if (code === 96 || code === 99) hits.push([4, "Hagel"]);
     else if (code === 95) hits.push([cape >= 1500 ? 4 : 3, "Gewitter"]);
-    if (cape >= 1200) hits.push([3, "Gewittergefahr"]); else if (cape >= 800) hits.push([2, "Gewitter möglich"]);
+    if (cape >= 1200) hits.push([3, "Hagel möglich"]); else if (cape >= 800) hits.push([2, "Gewitter möglich"]);
     if (gust >= 90) hits.push([4, "Orkanböen"]); else if (gust >= 70) hits.push([3, "Sturmböen"]); else if (gust >= 55) hits.push([2, "Windböen"]);
     if (pr >= 15) hits.push([3, "Starkregen"]); else if (pr >= 5) hits.push([2, "kräftiger Regen"]);
     if (temp >= 36) hits.push([3, "starke Hitze"]); else if (temp >= 30) hits.push([2, "Hitze"]);
