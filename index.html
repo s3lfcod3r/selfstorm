@@ -90,6 +90,24 @@
   .wm-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}
   .wm-detail b{color:var(--text)}
 
+  /* Zeitraffer-Karte (eingebettet) */
+  .tlmap{margin:16px 0 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+  .tl-stage{position:relative;max-width:460px;margin:0 auto}
+  #tl-canvas{display:block;width:100%;height:auto}
+  .tl-hud{position:absolute;top:8px;left:10px;pointer-events:none;font-variant-numeric:tabular-nums}
+  .tl-when{font-size:1rem;font-weight:700}
+  .tl-zones{font-size:.8rem;color:var(--muted)} .tl-zones b{color:var(--orange)}
+  .tl-haz{font-size:.78rem;color:var(--teal);margin-top:3px;max-width:70%}
+  .tl-controls{display:flex;align-items:center;gap:10px;max-width:460px;margin:12px auto 0}
+  .tl-play{flex:none;width:40px;height:40px;border-radius:999px;border:0;cursor:pointer;background:var(--teal);color:#05110d;font-size:1rem;display:grid;place-items:center;transition:filter .2s}
+  .tl-play:hover{filter:brightness(1.08)}
+  .tl-controls input[type=range]{flex:1;accent-color:var(--teal);height:24px}
+  .tl-speed{flex:none;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text);border-radius:var(--self-radius-sm);padding:6px 10px;cursor:pointer;font-size:.82rem}
+  .tl-speed:hover{border-color:var(--teal)}
+  .tl-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px;font-size:.76rem;color:var(--muted);justify-content:center}
+  .tl-legend span{display:inline-flex;align-items:center;gap:6px}
+  .tl-legend i{width:11px;height:11px;border-radius:50%}
+
   /* Search */
   .search{margin:26px 0 8px;position:relative}
   .search-row{display:flex;gap:10px}
@@ -230,7 +248,6 @@
       <span class="wordmark"><span class="w-self">Self</span><span class="w-name">Storm</span></span>
     </div>
     <p class="tagline"><b>Deine Unwetter- und Hagel-Ampel.</b> Mehrere Wettermodelle werden ehrlich gegeneinander gerechnet — für deine Orte. Kostenlos, kein Konto, deine Orte bleiben in deinem Browser.</p>
-    <a class="maplink" href="karte.html">Deutschland-Karte im Zeitraffer <span class="arrow">→</span></a>
   </header>
 
   <section class="warnmap" id="warnmap" hidden>
@@ -251,6 +268,32 @@
       <div class="wm-list" id="wm-list"><h3>Aktuelle Meldungen</h3><div class="wm-empty">Lädt…</div></div>
     </div>
     <div class="wm-detail" id="wm-detail">Tipp: Bundesland auf der Karte oder in der Liste antippen für Details.</div>
+  </section>
+
+  <section class="tlmap" id="tlmap">
+    <div class="wm-head">
+      <h2>Zeitraffer — nächste ~3 Tage</h2>
+      <span class="wm-sub">Alle Gefahren im Verlauf · <a href="karte.html">groß ansehen →</a></span>
+    </div>
+    <div class="tl-stage">
+      <div id="tl-loading" style="padding:40px 10px;text-align:center;color:var(--muted)">Lade Karte…</div>
+      <canvas id="tl-canvas" hidden></canvas>
+      <div class="tl-hud">
+        <div class="tl-when" id="tl-when">—</div>
+        <div class="tl-zones" id="tl-zones"></div>
+        <div class="tl-haz" id="tl-haz"></div>
+      </div>
+    </div>
+    <div class="tl-controls">
+      <button class="tl-play" id="tl-play" aria-label="Abspielen">▶</button>
+      <input type="range" id="tl-slider" min="0" value="0" />
+      <button class="tl-speed" id="tl-speed">1×</button>
+    </div>
+    <div class="tl-legend">
+      <span><i style="background:var(--yellow)"></i> Beobachten</span>
+      <span><i style="background:var(--orange)"></i> Warnung</span>
+      <span><i style="background:var(--red)"></i> Unwetter</span>
+    </div>
   </section>
 
   <section class="search">
@@ -749,5 +792,6 @@
   }
 })();
 </script>
+<script src="map/timelapse.js"></script>
 </body>
 </html>
