@@ -169,6 +169,18 @@
     border-radius:12px;padding:13px 16px;
     color:color-mix(in srgb, var(--self-yellow) 60%, var(--self-text));font-size:.85rem
   }
+  details.info{margin-top:24px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  details.info>summary{cursor:pointer;padding:15px 18px;font-weight:600;color:var(--text);list-style:none}
+  details.info>summary::-webkit-details-marker{display:none}
+  details.info>summary::after{content:"▾";float:right;color:var(--muted);transition:transform .2s var(--ease)}
+  details.info[open]>summary::after{transform:rotate(180deg)}
+  .info-body{padding:0 18px 18px;color:var(--muted);font-size:.9rem;line-height:1.65}
+  .info-body h4{color:var(--text);margin:16px 0 6px;font-size:.95rem}
+  .info-body p{margin:8px 0}
+  .info-body ul{margin:6px 0;padding-left:4px;list-style:none}
+  .info-body li{margin:5px 0}
+  .info-body b{color:var(--text);font-weight:600}
+  .info-body .lv{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:6px}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px;flex-wrap:wrap}
   .toolbar .updated{color:var(--muted);font-size:.82rem}
 </style>
@@ -204,6 +216,41 @@
     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z" stroke="#93a1b5" stroke-width="1.4"/><circle cx="12" cy="10" r="2.5" stroke="#93a1b5" stroke-width="1.4"/></svg>
     <div>Noch kein Ort ausgewählt.<br>Suche oben deinen Ort oder deine PLZ, um die Unwetter-Ampel zu sehen.</div>
   </div>
+
+  <details class="info">
+    <summary>Was bedeutet das? — alle Gefahren einfach erklärt</summary>
+    <div class="info-body">
+      <p>SelfStorm zeigt dir mit einer <b>Ampel</b>, wie gefährlich das Wetter an deinem Ort wird. Dahinter stecken je nach Lage verschiedene Gefahren.</p>
+
+      <h4>Die Ampel-Stufen</h4>
+      <ul>
+        <li><span class="lv" style="background:var(--green)"></span><b>Ruhig</b> — nichts Besorgniserregendes.</li>
+        <li><span class="lv" style="background:var(--yellow)"></span><b>Beobachten</b> — leichte Gefahr, einfach im Blick behalten.</li>
+        <li><span class="lv" style="background:var(--orange)"></span><b>Warnung</b> — ernste Gefahr, besser vorbereiten.</li>
+        <li><span class="lv" style="background:var(--red)"></span><b>Unwetter</b> — große Gefahr, schützen und aufpassen.</li>
+      </ul>
+
+      <h4>Welche Gefahren werden geprüft?</h4>
+      <ul>
+        <li><b>Gewitter &amp; Hagel</b> — Blitz und Donner; Hagel kann Autos, Fenster und Pflanzen beschädigen.</li>
+        <li><b>Sturm</b> — starke Böen: Wind- (ab 55 km/h), Sturm- (ab 70) und Orkanböen (ab 90).</li>
+        <li><b>Starkregen</b> — große Regenmengen in kurzer Zeit; Überflutung und Aquaplaning.</li>
+        <li><b>Hitze</b> — ab etwa 30 °C; belastet den Kreislauf, viel trinken.</li>
+        <li><b>Frost &amp; Glätte</b> — Kälte unter 0 °C; besonders tückisch ist <b>Glatteis</b> (gefrierender Regen).</li>
+        <li><b>Schnee</b> — Schneefall führt zu Glätte und Verkehrsbehinderungen.</li>
+        <li><b>Nebel</b> — schlechte Sicht, vor allem gefährlich im Straßenverkehr.</li>
+      </ul>
+
+      <h4>Was heißt „CAPE"?</h4>
+      <p>CAPE ist die <b>„Gewitter-Energie"</b> in der Luft (Einheit J/kg). Grobe Faustregel: unter 500 = ruhig, 1000–2000 = kräftige Gewitter und Hagel möglich, über 2500 = schwere Unwetter möglich. Wichtig: hohe CAPE ist <b>Potenzial, keine Garantie</b> — es braucht noch einen Auslöser.</p>
+
+      <h4>„Modell-Konsens"</h4>
+      <p>SelfStorm fragt <b>mehrere Wettermodelle</b> und zeigt, wie viele davon dasselbe erwarten (z. B. „3 von 4"). Je mehr sich einig sind, desto sicherer ist die Vorhersage.</p>
+
+      <h4>Was SelfStorm (noch) nicht kann</h4>
+      <p><b>Tornados</b> und <b>Sturmfluten</b> lassen sich aus normalen Wettermodellen nicht vorhersagen. Dafür zählen die <b>amtlichen Warnungen</b> vom Deutschen Wetterdienst (DWD, Land) und vom BSH (Küste/Sturmflut). SelfStorm zeigt die Wetterlage frühzeitig, ersetzt aber keine amtliche Warnung.</p>
+    </div>
+  </details>
 
   <div class="disclaimer">
     ⚠️ <b>SelfStorm ist ein freies Hobby-Projekt und ersetzt keine amtliche Warnung.</b>
@@ -305,39 +352,67 @@
     locations=locations.filter(l=>id(l)!==id(loc)); save(); render();
   }
 
-  // ---------- Analyse ----------
+  // ---------- Analyse (alle Gefahren) ----------
+  const HAZ_ADVICE={
+    "Hagel":"Auto möglichst unterstellen oder schützen.",
+    "Gewitter":"Bei Gewitter drinnen bleiben, Loses draußen sichern.",
+    "Gewittergefahr":"Kräftige Gewitter mit Hagel möglich — Lage beobachten.",
+    "Gewitter möglich":"Einzelne Gewitter möglich.",
+    "Orkanböen":"Sturmgefahr — Loses sichern, Bäume/Gerüste meiden.",
+    "Sturmböen":"Loses draußen sichern, im Wald aufpassen.",
+    "Windböen":"Vereinzelt kräftige Böen.",
+    "Starkregen":"Überflutung und Aquaplaning möglich.",
+    "kräftiger Regen":"Zeitweise kräftiger Regen.",
+    "starke Hitze":"Große Hitze — viel trinken, Mittagssonne meiden.",
+    "Hitze":"Warm — viel trinken, Schatten suchen.",
+    "Glatteis":"Glatteis durch gefrierenden Regen — sehr vorsichtig fahren und gehen.",
+    "Glättegefahr":"Rutschgefahr durch Glätte.",
+    "strenger Frost":"Strenger Frost — Frostschutz beachten.",
+    "Frost":"Frost — Glätte und Kälte möglich.",
+    "starker Schneefall":"Starker Schneefall — Behinderungen und Glätte.",
+    "Schneefall":"Schneefall — mögliche Glätte.",
+    "dichter Nebel":"Dichter Nebel — sehr schlechte Sicht im Verkehr.",
+    "Nebel":"Nebel — schlechte Sicht."
+  };
+  function detailFor(label, v){
+    if(/Hitze/.test(label)) return Math.round(v.temp)+"°C";
+    if(/Frost|Glätte|Glatteis/.test(label)) return Math.round(v.temp)+"°C";
+    if(/Schnee/.test(label)) return (Math.round(v.snow*10)/10)+" cm";
+    if(/Nebel/.test(label)) return v.vis?("Sicht "+Math.round(v.vis)+" m"):"";
+    if(/Gewitter|Hagel/.test(label) && v.cape>=800) return "CAPE "+Math.round(v.cape);
+    return "";
+  }
   function analyze(fc){
-    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, tags:new Set()};
+    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, peakLabel:"", tags:new Set()};
     for(let i=0;i<t.length;i++){
       const code=h.weather_code[i], cape=num(h.cape[i]), gust=num(h.wind_gusts_10m[i]),
-            pr=num(h.precipitation[i]), pp=num(h.precipitation_probability[i]);
-      let lv=0; const tags=[];
-      if(code===96||code===99){ lv=Math.max(lv,4); tags.push("Hagel"); }
-      else if(code===95){ lv=Math.max(lv, cape>=1500?4:3); tags.push("Gewitter"); }
-      if(cape>=1200){ lv=Math.max(lv,3); tags.push("sehr labil"); }
-      else if(cape>=800){ lv=Math.max(lv,2); tags.push("labil"); }
-      if(gust>=90){ lv=Math.max(lv,4); tags.push("Orkanböen"); }
-      else if(gust>=70){ lv=Math.max(lv,3); tags.push("Sturmböen"); }
-      else if(gust>=55){ lv=Math.max(lv,2); tags.push("Windböen"); }
-      if(pr>=15){ lv=Math.max(lv,3); tags.push("Starkregen"); }
-      else if(pr>=5){ lv=Math.max(lv,2); tags.push("kräftiger Regen"); }
-      if(lv>=2){ out.events.push({time:t[i],code,cape,gust,pr,pp,lv,tags}); tags.forEach(x=>out.tags.add(x)); }
-      if(lv>out.peak){ out.peak=lv; out.peakTime=t[i]; }
+            pr=num(h.precipitation[i]), temp=num(h.temperature_2m&&h.temperature_2m[i]),
+            snow=num(h.snowfall&&h.snowfall[i]), vis=num(h.visibility&&h.visibility[i]);
+      const hits=[];
+      if(code===96||code===99) hits.push([4,"Hagel"]);
+      else if(code===95) hits.push([cape>=1500?4:3,"Gewitter"]);
+      if(cape>=1200) hits.push([3,"Gewittergefahr"]); else if(cape>=800) hits.push([2,"Gewitter möglich"]);
+      if(gust>=90) hits.push([4,"Orkanböen"]); else if(gust>=70) hits.push([3,"Sturmböen"]); else if(gust>=55) hits.push([2,"Windböen"]);
+      if(pr>=15) hits.push([3,"Starkregen"]); else if(pr>=5) hits.push([2,"kräftiger Regen"]);
+      if(temp>=36) hits.push([3,"starke Hitze"]); else if(temp>=30) hits.push([2,"Hitze"]);
+      if(code===66||code===67) hits.push([3,"Glatteis"]); else if(temp<=1&&temp>=-3&&pr>=0.1) hits.push([2,"Glättegefahr"]);
+      if(temp<=-10) hits.push([3,"strenger Frost"]); else if(temp<=-5) hits.push([2,"Frost"]);
+      if(snow>=5||code===75||code===86) hits.push([3,"starker Schneefall"]); else if(snow>=1||code===71||code===73||code===85) hits.push([2,"Schneefall"]);
+      if(vis>0&&vis<200) hits.push([3,"dichter Nebel"]); else if((vis>0&&vis<1000)||code===45||code===48) hits.push([2,"Nebel"]);
+      if(!hits.length) continue;
+      hits.sort((a,b)=>b[0]-a[0]);
+      const lv=hits[0][0], label=hits[0][1];
+      if(lv>=2){ out.events.push({time:t[i], lv, label, detail:detailFor(label,{cape,temp,snow,vis})}); hits.forEach(x=>out.tags.add(x[1])); }
+      if(lv>out.peak){ out.peak=lv; out.peakTime=t[i]; out.peakLabel=label; }
     }
     return out;
   }
 
   function verdictText(a){
-    if(a.peak<=1) return "Ruhig — kein Unwetter- oder Hagelsignal in den nächsten 3 Tagen.";
-    const when=fmtWhen(a.peakTime);
-    const hail=a.tags.has("Hagel");
-    const thunder=a.events.some(e=>e.code>=95);
-    if(a.peak===4){
-      return (hail? "Hagelgefahr" : "Unwettergefahr")+" — Schwerpunkt "+when+". "+
-             (hail? "Auto möglichst unterstellen oder schützen." : "Empfindliches im Freien sichern.");
-    }
-    if(a.peak===3) return "Gewitter-/Sturmgefahr — Schwerpunkt "+when+". Lage im Auge behalten.";
-    return "Leicht labile Lage — Schwerpunkt "+when+". Aktuell kein akutes Hagelrisiko.";
+    if(a.peak<=1) return "Ruhig — aktuell keine Wetterwarnung in den nächsten 3 Tagen.";
+    const when=fmtWhen(a.peakTime), lbl=a.peakLabel, advice=HAZ_ADVICE[lbl]||"";
+    const kind=a.peak===4?" (Unwetter)":"";
+    return `${lbl}${kind} — Schwerpunkt ${when}.${advice?" "+advice:""}`;
   }
 
   // ---------- Konsens (mehrere Modelle) ----------
@@ -363,7 +438,7 @@
     el.classList.add("loading");
     try{
       const p=new URLSearchParams({latitude:loc.lat,longitude:loc.lon,
-        hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code",
+        hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
         daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max",
         timezone:"auto",forecast_days:"3"});
       const r=await fetch(`${FC}?${p}`);
@@ -415,8 +490,7 @@
       const evs=(byDay[d]||[]).slice(0,4);
       const head=fmtDay(d);
       const body=evs.length? evs.map(e=>{
-        const label=e.code>=95?(e.code>=96?"Hagel":"Gewitter"):e.tags[0]||"—";
-        return `<div class="ev"><span class="t">${fmtHour(e.time)}</span><span class="d-${e.lv}">${label}${e.cape>=800?` · CAPE ${Math.round(e.cape)}`:""}</span></div>`;
+        return `<div class="ev"><span class="t">${fmtHour(e.time)}</span><span class="d-${e.lv}">${e.label}${e.detail?` · ${e.detail}`:""}</span></div>`;
       }).join("") : `<div class="calm">ruhig</div>`;
       return `<div class="day"><div class="day-h">${head}</div>${body}</div>`;
     }).join("")+`</div>`;
