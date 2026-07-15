@@ -85,7 +85,7 @@
   .wm-row:hover .st{color:var(--teal)}
   .wm-row .sq{width:12px;height:12px;border-radius:3px;flex:none;margin-top:3px}
   .wm-row .st{font-weight:600}
-  .wm-row .ev{color:var(--muted);font-size:.82rem}
+  .wm-row .wm-ev{color:var(--muted);font-size:.82rem}
   .wm-empty{color:var(--muted);font-style:italic;font-size:.86rem}
   .wm-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}
   .wm-detail b{color:var(--text)}
@@ -416,7 +416,7 @@
   const HAZ_ADVICE={
     "Hagel":"Auto möglichst unterstellen oder schützen.",
     "Gewitter":"Bei Gewitter drinnen bleiben, Loses draußen sichern.",
-    "Gewittergefahr":"Kräftige Gewitter mit Hagel möglich — Lage beobachten.",
+    "Hagel möglich":"Kräftige Gewitter, Hagel möglich — Auto lieber unterstellen.",
     "Gewitter möglich":"Einzelne Gewitter möglich.",
     "Orkanböen":"Sturmgefahr — Loses sichern, Bäume/Gerüste meiden.",
     "Sturmböen":"Loses draußen sichern, im Wald aufpassen.",
@@ -451,7 +451,7 @@
       const hits=[];
       if(code===96||code===99) hits.push([4,"Hagel"]);
       else if(code===95) hits.push([cape>=1500?4:3,"Gewitter"]);
-      if(cape>=1200) hits.push([3,"Gewittergefahr"]); else if(cape>=800) hits.push([2,"Gewitter möglich"]);
+      if(cape>=1200) hits.push([3,"Hagel möglich"]); else if(cape>=800) hits.push([2,"Gewitter möglich"]);
       if(gust>=90) hits.push([4,"Orkanböen"]); else if(gust>=70) hits.push([3,"Sturmböen"]); else if(gust>=55) hits.push([2,"Windböen"]);
       if(pr>=15) hits.push([3,"Starkregen"]); else if(pr>=5) hits.push([2,"kräftiger Regen"]);
       if(temp>=36) hits.push([3,"starke Hitze"]); else if(temp>=30) hits.push([2,"Hitze"]);
@@ -742,7 +742,7 @@
     if(!warned.length) html+=`<div class="wm-empty">Aktuell keine amtlichen Warnungen.</div>`;
     else html+=warned.map(d=>{
       const ev=[...new Set(d.items.map(i=>cap(i.event)))].slice(0,2).join(", ");
-      return `<div class="wm-row" data-id="${d.id}"><span class="sq" style="background:${LVCOL[d.level]}"></span><span><span class="st">${esc(d.name)}</span><br><span class="ev">${esc(ev)}</span></span></div>`;
+      return `<div class="wm-row" data-id="${d.id}"><span class="sq" style="background:${LVCOL[d.level]}"></span><span><span class="st">${esc(d.name)}</span><br><span class="wm-ev">${esc(ev)}</span></span></div>`;
     }).join("");
     box.innerHTML=html;
     box.querySelectorAll(".wm-row").forEach(row=>row.onclick=()=>{ selected=row.getAttribute("data-id"); draw(); showDetail(selected); });
