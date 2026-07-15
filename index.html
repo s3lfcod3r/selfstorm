@@ -66,6 +66,30 @@
   .maplink:hover{border-color:var(--teal);background:var(--surface-2)}
   .maplink .arrow{color:var(--teal)}
 
+  /* Warnkarte nach Bundesländern */
+  .warnmap{margin:24px 0 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 16px}
+  .wm-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .wm-head h2{margin:0;font-size:1.05rem;font-weight:700}
+  .wm-sub{color:var(--muted);font-size:.82rem}
+  .wm-sub a{color:var(--teal);text-decoration:none}
+  .wm-sub a:hover{text-decoration:underline}
+  .wm-grid{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:20px;align-items:start}
+  @media(max-width:560px){.wm-grid{grid-template-columns:1fr}}
+  #wm-canvas{display:block;width:100%;height:auto;cursor:pointer}
+  .wm-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:.76rem;color:var(--muted)}
+  .wm-legend span{display:inline-flex;align-items:center;gap:6px}
+  .wm-legend i{width:11px;height:11px;border-radius:3px}
+  .wm-list h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px}
+  .wm-row{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border);cursor:pointer}
+  .wm-row:first-of-type{border-top:0}
+  .wm-row:hover .st{color:var(--teal)}
+  .wm-row .sq{width:12px;height:12px;border-radius:3px;flex:none;margin-top:3px}
+  .wm-row .st{font-weight:600}
+  .wm-row .ev{color:var(--muted);font-size:.82rem}
+  .wm-empty{color:var(--muted);font-style:italic;font-size:.86rem}
+  .wm-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}
+  .wm-detail b{color:var(--text)}
+
   /* Search */
   .search{margin:26px 0 8px;position:relative}
   .search-row{display:flex;gap:10px}
@@ -208,6 +232,26 @@
     <p class="tagline"><b>Deine Unwetter- und Hagel-Ampel.</b> Mehrere Wettermodelle werden ehrlich gegeneinander gerechnet — für deine Orte. Kostenlos, kein Konto, deine Orte bleiben in deinem Browser.</p>
     <a class="maplink" href="karte.html">Deutschland-Karte im Zeitraffer <span class="arrow">→</span></a>
   </header>
+
+  <section class="warnmap" id="warnmap" hidden>
+    <div class="wm-head">
+      <h2>Warnlage in Deutschland</h2>
+      <span class="wm-sub">Amtliche DWD-Warnungen je Bundesland · <a href="karte.html">Zeitraffer-Karte →</a></span>
+    </div>
+    <div class="wm-grid">
+      <div>
+        <canvas id="wm-canvas"></canvas>
+        <div class="wm-legend">
+          <span><i style="background:var(--green)"></i> keine Warnung</span>
+          <span><i style="background:var(--yellow)"></i> Wetterwarnung</span>
+          <span><i style="background:var(--orange)"></i> markant</span>
+          <span><i style="background:var(--red)"></i> Unwetter</span>
+        </div>
+      </div>
+      <div class="wm-list" id="wm-list"><h3>Aktuelle Meldungen</h3><div class="wm-empty">Lädt…</div></div>
+    </div>
+    <div class="wm-detail" id="wm-detail">Tipp: Bundesland auf der Karte oder in der Liste antippen für Details.</div>
+  </section>
 
   <section class="search">
     <div class="search-row">
@@ -600,6 +644,109 @@
   // ---------- Init ----------
   render();
   if(locations.length) refreshAll();
+})();
+</script>
+
+<script>
+/* ---------- Warnkarte nach Bundesländern (amtliche DWD-Warnungen) ---------- */
+(function(){
+  "use strict";
+  const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
+  const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
+  const LVCOL=["#3fb950","#3fb950","#d29922","#e0791f","#f85149"];
+  // Repräsentativer Punkt (Landeshauptstadt) je Bundesland für die DWD-Abfrage
+  const CAPS={"DE-BW":[48.78,9.18],"DE-BY":[48.14,11.58],"DE-BE":[52.52,13.40],"DE-BB":[52.40,13.06],
+    "DE-HB":[53.08,8.80],"DE-HH":[53.55,9.99],"DE-HE":[50.08,8.24],"DE-MV":[53.63,11.42],
+    "DE-NI":[52.37,9.73],"DE-NW":[51.23,6.78],"DE-RP":[50.00,8.27],"DE-SL":[49.24,6.99],
+    "DE-SN":[51.05,13.74],"DE-ST":[52.13,11.63],"DE-SH":[54.32,10.14],"DE-TH":[50.98,11.03]};
+  const cv=document.getElementById("wm-canvas"); if(!cv) return;
+  const ctx=cv.getContext("2d");
+  let feats=null, B, kx, scale, ox, oy, W, H, selected=null;
+  const DPR=Math.max(1,Math.min(2,window.devicePixelRatio||1));
+  const data={};
+
+  const cap=s=>{ s=String(s||""); return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); };
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const hexA=(hex,a)=>{ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
+  const polys=g=>g.type==="Polygon"?[g.coordinates]:g.coordinates;
+
+  fetch("map/bundeslaender.geojson").then(r=>r.json()).then(geo=>{
+    feats=geo.features;
+    let minLat=90,maxLat=-90,minLon=180,maxLon=-180;
+    feats.forEach(f=>(function rec(c){ if(typeof c[0]==="number"){minLon=Math.min(minLon,c[0]);maxLon=Math.max(maxLon,c[0]);minLat=Math.min(minLat,c[1]);maxLat=Math.max(maxLat,c[1]);} else c.forEach(rec); })(f.geometry.coordinates));
+    B={minLat,maxLat,minLon,maxLon}; kx=Math.cos((minLat+maxLat)/2*Math.PI/180);
+    document.getElementById("warnmap").hidden=false;
+    resize(); draw();
+    cv.addEventListener("click",onClick);
+    let rt; window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{resize();draw();},150);});
+    loadAlerts();
+  }).catch(()=>{});
+
+  function resize(){
+    W=cv.clientWidth||cv.parentElement.clientWidth||300;
+    const gw=(B.maxLon-B.minLon)*kx, gh=(B.maxLat-B.minLat);
+    H=Math.round(W*(gh/gw)); cv.style.height=H+"px";
+    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+    const pad=6; scale=Math.min((W-2*pad)/gw,(H-2*pad)/gh); ox=(W-gw*scale)/2; oy=(H-gh*scale)/2;
+  }
+  function px(lon,lat){ return [ox+((lon-B.minLon)*kx)*scale, oy+((B.maxLat-lat))*scale]; }
+  function tracePath(geom){
+    ctx.beginPath();
+    polys(geom).forEach(poly=>{ poly[0].forEach((c,i)=>{const p=px(c[0],c[1]); i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}); ctx.closePath(); });
+  }
+  function draw(){
+    if(!feats) return;
+    ctx.clearRect(0,0,W,H);
+    feats.forEach(f=>{
+      const d=data[f.properties.id], lv=d?d.level:0, sel=selected===f.properties.id;
+      tracePath(f.geometry);
+      ctx.fillStyle=lv>=2?hexA(LVCOL[lv],0.55):"rgba(157,189,208,0.05)"; ctx.fill();
+      ctx.lineWidth=sel?2.2:1; ctx.strokeStyle=sel?"#43d3ad":"rgba(157,189,208,0.35)"; ctx.stroke();
+    });
+  }
+  function inRing(lon,lat,ring){ let ins=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1]; if(((yi>lat)!==(yj>lat))&&(lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)) ins=!ins;} return ins; }
+  function inState(lon,lat,geom){ return polys(geom).some(p=>inRing(lon,lat,p[0])); }
+  function onClick(e){
+    const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+    const lon=B.minLon+(x-ox)/(scale*kx), lat=B.maxLat-(y-oy)/scale;
+    const f=feats.find(f=>inState(lon,lat,f.geometry)); if(!f) return;
+    selected=f.properties.id; draw(); showDetail(f.properties.id);
+  }
+  function showDetail(id){
+    const f=feats.find(f=>f.properties.id===id), d=data[id], det=document.getElementById("wm-detail");
+    if(!f) return;
+    if(!d){ det.innerHTML=`<b>${esc(f.properties.name)}</b>: lädt…`; return; }
+    if(!d.items.length){ det.innerHTML=`<b>${esc(f.properties.name)}</b>: keine amtliche Warnung.`; return; }
+    det.innerHTML=`<b>${esc(f.properties.name)}</b> — `+d.items.map(it=>`${esc(cap(it.event))} <em>(${SEV_LABEL[it.sev]||"Warnung"})</em>`).join("; ");
+  }
+  async function loadAlerts(){
+    const KEY="selfstorm.wm.v1";
+    try{ const c=JSON.parse(sessionStorage.getItem(KEY)||"null"); if(c&&Date.now()-c.t<600000){ Object.assign(data,c.d); draw(); renderList(); return; } }catch(e){}
+    await Promise.all(feats.map(async f=>{
+      const id=f.properties.id, cc=CAPS[id];
+      if(!cc){ data[id]={id,level:0,items:[],name:f.properties.name}; return; }
+      try{
+        const r=await fetch(`https://api.brightsky.dev/alerts?lat=${cc[0]}&lon=${cc[1]}&tz=Europe/Berlin`);
+        const j=await r.json();
+        const items=(j.alerts||[]).map(x=>({event:x.event_de||x.event_en||"Warnung",sev:x.severity}));
+        data[id]={id,level:items.reduce((m,i)=>Math.max(m,SEVLV[i.sev]||2),0),items,name:f.properties.name};
+      }catch(e){ data[id]={id,level:0,items:[],name:f.properties.name}; }
+    }));
+    try{ sessionStorage.setItem(KEY,JSON.stringify({t:Date.now(),d:data})); }catch(e){}
+    draw(); renderList();
+  }
+  function renderList(){
+    const box=document.getElementById("wm-list");
+    const warned=feats.map(f=>data[f.properties.id]).filter(d=>d&&d.level>=2).sort((a,b)=>b.level-a.level);
+    let html=`<h3>Aktuelle Meldungen</h3>`;
+    if(!warned.length) html+=`<div class="wm-empty">Aktuell keine amtlichen Warnungen.</div>`;
+    else html+=warned.map(d=>{
+      const ev=[...new Set(d.items.map(i=>cap(i.event)))].slice(0,2).join(", ");
+      return `<div class="wm-row" data-id="${d.id}"><span class="sq" style="background:${LVCOL[d.level]}"></span><span><span class="st">${esc(d.name)}</span><br><span class="ev">${esc(ev)}</span></span></div>`;
+    }).join("");
+    box.innerHTML=html;
+    box.querySelectorAll(".wm-row").forEach(row=>row.onclick=()=>{ selected=row.getAttribute("data-id"); draw(); showDetail(selected); });
+  }
 })();
 </script>
 </body>
