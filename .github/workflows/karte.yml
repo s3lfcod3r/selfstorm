@@ -1,0 +1,38 @@
+name: SelfStorm Karte
+
+on:
+  schedule:
+    - cron: "23 */6 * * *"   # alle 6 Stunden (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: karte
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Raster neu vorrechnen
+        working-directory: map
+        run: node build-grid.mjs
+
+      - name: grid.json committen
+        run: |
+          if ! git diff --quiet -- map/grid.json; then
+            git config user.name "selfstorm-bot"
+            git config user.email "bot@selfcoder.de"
+            git add map/grid.json
+            git commit -m "chore(karte): Raster aktualisiert [skip ci]"
+            git push
+          else
+            echo "keine Änderung am Raster"
+          fi
