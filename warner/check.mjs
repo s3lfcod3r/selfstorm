@@ -75,6 +75,19 @@ function fmtWhen(t) {
   return WD[dt.getUTCDay()] + " " + dt.getUTCDate() + "." + (dt.getUTCMonth() + 1) + ". um " + t.slice(11, 16) + " Uhr";
 }
 const LEVEL = ["Ruhig", "Ruhig", "Beobachten", "Warnung", "Unwetter"];
+const cap = s => { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); };
+
+// Amtliche DWD-Warnungen (Bright Sky) — autoritative Ebene, deckt auch Sturmflut/Hitze usw.
+async function fetchDwd(loc) {
+  try {
+    const r = await fetch(`https://api.brightsky.dev/alerts?lat=${loc.lat}&lon=${loc.lon}&tz=Europe/Berlin`);
+    if (!r.ok) return { level: 0, items: [] };
+    const j = await r.json();
+    const SEVLV = { minor: 2, moderate: 3, severe: 4, extreme: 4 };
+    const items = (j.alerts || []).map(x => ({ event: x.event_de || x.event_en || "Warnung", sev: x.severity }));
+    return { level: items.reduce((m, i) => Math.max(m, SEVLV[i.sev] || 2), 0), items };
+  } catch (e) { return { level: 0, items: [] }; }
+}
 
 function verdict(a) {
   const when = fmtWhen(a.peakTime), lbl = a.peakLabel, advice = HAZ_ADVICE[lbl] || "";
@@ -122,22 +135,25 @@ for (const loc of cfg.locations) {
   } catch (e) { console.error("Abruf fehlgeschlagen für", loc.name, e.message); continue; }
 
   const a = analyze(fc);
+  const dwd = await fetchDwd(loc);
+  const peak = Math.max(a.peak, dwd.level);
   const key = `${loc.lat},${loc.lon}`;
   const prev = state[key] || { level: 0, date: null };
 
-  if (a.peak >= threshold) {
-    const alreadyToday = prev.date === todayStr && prev.level >= a.peak;
-    if (!alreadyToday) { alerts.push({ loc, a }); state[key] = { level: a.peak, date: todayStr }; changed = true; }
+  if (peak >= threshold) {
+    const alreadyToday = prev.date === todayStr && prev.level >= peak;
+    if (!alreadyToday) { alerts.push({ loc, a, dwd, peak }); state[key] = { level: peak, date: todayStr }; changed = true; }
   } else if (prev.level) {
     state[key] = { level: 0, date: todayStr }; changed = true; // Entwarnung merken
   }
 }
 
-for (const { loc, a } of alerts) {
-  const title = `SelfStorm: ${loc.name} - ${LEVEL[a.peak]}`;
-  const body = verdict(a);
+for (const { loc, a, dwd, peak } of alerts) {
+  const official = dwd.items.length ? `Amtliche DWD-Warnung: ${cap(dwd.items[0].event)}. ` : "";
+  const title = `SelfStorm: ${loc.name} - ${LEVEL[peak]}`;
+  const body = official + verdict(a);
   console.log("ALARM:", title, "|", body);
-  try { await sendNtfy(title, body, a.peak); } catch (e) { console.error("ntfy-Fehler:", e.message); }
+  try { await sendNtfy(title, body, peak); } catch (e) { console.error("ntfy-Fehler:", e.message); }
   try { await sendMail(title, `${loc.name}\n${body}`); } catch (e) { console.error("mail-Fehler:", e.message); }
 }
 

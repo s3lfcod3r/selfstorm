@@ -147,6 +147,19 @@
   .meter i{width:16px;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
   .meter i.on{background:var(--orange)}
 
+  .dwd{border-top:1px solid var(--border);padding:13px 18px;background:color-mix(in srgb, var(--red) 8%, transparent)}
+  .dwd-h{font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:#fca5a5;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+  .dwd-h::before{content:"⚠"}
+  .dwd-item{padding:9px 0;border-top:1px dashed var(--border)}
+  .dwd-item:first-of-type{border-top:0;padding-top:0}
+  .dwd-ev{font-weight:600;font-size:.95rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .dwd-sev{font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:6px;font-weight:700}
+  .sev-minor .dwd-sev{background:rgba(210,153,34,.15);color:#f7d774;border:1px solid rgba(210,153,34,.34)}
+  .sev-moderate .dwd-sev{background:rgba(224,121,31,.16);color:#fdba74;border:1px solid rgba(224,121,31,.38)}
+  .sev-severe .dwd-sev,.sev-extreme .dwd-sev{background:rgba(248,81,73,.16);color:#fca5a5;border:1px solid rgba(248,81,73,.42)}
+  .dwd-time{color:var(--muted);font-size:.82rem;margin-top:3px}
+  .dwd-instr{color:var(--text);font-size:.85rem;margin-top:6px;line-height:1.5}
+
   .card.loading .card-head{opacity:.6}
   .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:var(--teal);
     border-radius:50%;animation:sp .8s linear infinite;display:inline-block;vertical-align:-2px}
@@ -247,8 +260,11 @@
       <h4>„Modell-Konsens"</h4>
       <p>SelfStorm fragt <b>mehrere Wettermodelle</b> und zeigt, wie viele davon dasselbe erwarten (z. B. „3 von 4"). Je mehr sich einig sind, desto sicherer ist die Vorhersage.</p>
 
-      <h4>Was SelfStorm (noch) nicht kann</h4>
-      <p><b>Tornados</b> und <b>Sturmfluten</b> lassen sich aus normalen Wettermodellen nicht vorhersagen. Dafür zählen die <b>amtlichen Warnungen</b> vom Deutschen Wetterdienst (DWD, Land) und vom BSH (Küste/Sturmflut). SelfStorm zeigt die Wetterlage frühzeitig, ersetzt aber keine amtliche Warnung.</p>
+      <h4>Amtliche DWD-Warnungen</h4>
+      <p>Zusätzlich zur eigenen Berechnung zeigt SelfStorm die <b>amtlichen Warnungen des Deutschen Wetterdienstes (DWD)</b> für deinen Ort — z. B. Hitze, Gewitter, Sturm, Schnee oder Glätte. Sie erscheinen im roten <b>„Amtliche DWD-Warnung"</b>-Feld und sind die verlässlichste Quelle.</p>
+
+      <h4>Was auch das nicht abdeckt</h4>
+      <p><b>Tornados</b> lassen sich grundsätzlich nicht vorhersagen. Für <b>Sturmfluten</b> an der Küste ist das <b>BSH</b> zuständig. SelfStorm zeigt Wetterlage und amtliche Warnungen frühzeitig, ersetzt aber keine offizielle Warn-App (WarnWetter / NINA).</p>
     </div>
   </details>
 
@@ -431,6 +447,22 @@
     }catch(e){ return null; }
   }
 
+  // ---------- Amtliche DWD-Warnungen (Bright Sky) ----------
+  async function alerts(loc){
+    try{
+      const r=await fetch(`https://api.brightsky.dev/alerts?lat=${loc.lat}&lon=${loc.lon}&tz=Europe/Berlin`);
+      if(!r.ok) throw 0;
+      const j=await r.json();
+      const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
+      const items=(j.alerts||[]).map(x=>({
+        event:x.event_de||x.event_en||"Warnung", sev:x.severity,
+        onset:x.onset, expires:x.expires, instruction:x.instruction_de||""
+      }));
+      const level=items.reduce((m,i)=>Math.max(m,SEVLV[i.sev]||2),0);
+      return {level, items, cell:(j.location&&j.location.name)||""};
+    }catch(e){ return {level:0, items:[]}; }
+  }
+
   // ---------- Rendering ----------
   async function loadOne(loc){
     const el=document.getElementById("card-"+cssId(loc));
@@ -441,12 +473,12 @@
         hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
         daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max",
         timezone:"auto",forecast_days:"3"});
-      const r=await fetch(`${FC}?${p}`);
+      const [r, dwd]=await Promise.all([ fetch(`${FC}?${p}`), alerts(loc) ]);
       if(!r.ok) throw new Error("HTTP "+r.status);
       const fc=await r.json();
       const a=analyze(fc);
       const con=await consensus(loc);
-      paintCard(el, loc, a, con);
+      paintCard(el, loc, a, dwd, con);
       stampUpdate();
     }catch(e){
       el.className="card lv-0";
@@ -456,9 +488,13 @@
     }
   }
 
-  function paintCard(el, loc, a, con){
-    el.className="card lv-"+a.peak;
-    el.innerHTML=cardHeadHtml(loc, a.peak, verdictText(a))+daysHtml(a)+consensusHtml(con);
+  function paintCard(el, loc, a, dwd, con){
+    const dwdLvl=(dwd&&dwd.level)||0, lvl=Math.max(a.peak, dwdLvl);
+    const verdict=(dwd&&dwd.items&&dwd.items.length && dwdLvl>=a.peak)
+      ? `Amtliche Warnung: ${escapeHtml(cap(dwd.items[0].event))} — Details unten.`
+      : verdictText(a);
+    el.className="card lv-"+lvl;
+    el.innerHTML=cardHeadHtml(loc, lvl, verdict)+dwdHtml(dwd)+daysHtml(a)+consensusHtml(con);
     attachRemove(el,loc);
   }
 
@@ -504,6 +540,24 @@
       ? `Gewitter-Konsens: <b>kein</b> Modell sieht Gewitter.`
       : `Gewitter-Konsens: <b>${on} von ${tot}</b> Modellen${con.day?` (ab ${fmtWhen(con.day)})`:""}.`;
     return `<div class="consensus"><span class="meter">${bars}</span> ${txt}</div>`;
+  }
+
+  const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
+  function cap(s){ s=String(s||""); return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); }
+  function fmtRange(a,b){
+    const f=t=>{ if(!t) return ""; const d=new Date(t); return WD[d.getDay()]+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); };
+    const s=f(a), e=f(b);
+    return (s?("ab "+s):"")+(e?(" bis "+e+" Uhr"):"");
+  }
+  function dwdHtml(dwd){
+    if(!dwd||!dwd.items||!dwd.items.length) return "";
+    return `<div class="dwd">
+      <div class="dwd-h">Amtliche DWD-Warnung${dwd.items.length>1?"en":""}${dwd.cell?` · ${escapeHtml(dwd.cell)}`:""}</div>`+
+      dwd.items.map(it=>`<div class="dwd-item sev-${it.sev}">
+        <div class="dwd-ev">${escapeHtml(cap(it.event))} <span class="dwd-sev">${SEV_LABEL[it.sev]||"Warnung"}</span></div>
+        <div class="dwd-time">${fmtRange(it.onset,it.expires)}</div>
+        ${it.instruction?`<div class="dwd-instr">${escapeHtml(it.instruction)}</div>`:""}
+      </div>`).join("")+`</div>`;
   }
 
   function attachRemove(el,loc){
