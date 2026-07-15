@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SelfStorm — Unwetter-Ampel</title>
+<meta name="description" content="Deine Unwetter- und Hagel-Ampel: mehrere Wettermodelle ehrlich gegeneinander gerechnet, für deine Orte. Kostenlos, kein Konto." />
+<style>
+  :root{
+    --bg:#0b0f18;
+    --bg-2:#0e1524;
+    --surface:rgba(255,255,255,.045);
+    --surface-2:rgba(255,255,255,.07);
+    --border:rgba(255,255,255,.10);
+    --text:#e8eef7;
+    --muted:#93a1b5;
+    --teal:#1fb6a6;
+    --teal-glow:rgba(31,182,166,.35);
+    --green:#22c55e;
+    --yellow:#eab308;
+    --orange:#f97316;
+    --red:#ef4444;
+    --radius:16px;
+    --shadow:0 18px 50px -18px rgba(0,0,0,.7);
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(1200px 700px at 78% -8%, rgba(31,182,166,.16), transparent 60%),
+      radial-gradient(900px 600px at 8% 4%, rgba(59,90,150,.20), transparent 55%),
+      linear-gradient(180deg, var(--bg-2), var(--bg) 40%);
+    background-attachment:fixed;
+    min-height:100vh;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:clamp(20px,4vw,44px) clamp(16px,4vw,28px) 64px}
+
+  /* Header */
+  header{margin-bottom:28px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .mark{
+    font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    font-size:clamp(1.35rem,1rem+2.4vw,2.1rem);
+    background:linear-gradient(92deg,#fff 10%,var(--teal) 90%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .bolt{
+    width:38px;height:38px;flex:none;display:grid;place-items:center;
+    border-radius:11px;background:linear-gradient(150deg,rgba(31,182,166,.28),rgba(31,182,166,.06));
+    border:1px solid rgba(31,182,166,.4);box-shadow:0 0 22px -6px var(--teal-glow);
+  }
+  .bolt svg{width:20px;height:20px}
+  .tagline{color:var(--muted);margin:12px 0 0;max-width:52ch;font-size:.98rem}
+  .tagline b{color:var(--text);font-weight:600}
+
+  /* Search */
+  .search{margin:26px 0 8px;position:relative}
+  .search-row{display:flex;gap:10px}
+  input[type=text]{
+    flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);
+    color:var(--text);padding:14px 16px;border-radius:13px;font-size:1rem;outline:none;
+    transition:border-color .2s,box-shadow .2s;
+  }
+  input[type=text]::placeholder{color:#66768c}
+  input[type=text]:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(31,182,166,.16)}
+  .btn{
+    border:0;cursor:pointer;font-size:1rem;font-weight:600;color:#04201d;
+    background:linear-gradient(180deg,#2bd0be,var(--teal));
+    padding:0 20px;border-radius:13px;transition:transform .15s var(--ease),filter .2s;
+    white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.06)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+  .hint{color:var(--muted);font-size:.85rem;margin-top:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    padding:8px 13px;border-radius:999px;cursor:pointer;font-size:.9rem;
+    transition:border-color .2s,background .2s;
+  }
+  .chip:hover{border-color:var(--teal);background:var(--surface-2)}
+  .chip small{color:var(--muted)}
+
+  /* Location cards */
+  #list{margin-top:26px;display:flex;flex-direction:column;gap:16px}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);overflow:hidden;position:relative;
+  }
+  .card-head{display:flex;align-items:flex-start;gap:14px;padding:18px 18px 14px}
+  .lamp{
+    width:16px;height:16px;border-radius:50%;flex:none;margin-top:5px;position:relative;
+  }
+  .lamp::after{content:"";position:absolute;inset:-6px;border-radius:50%;opacity:.5;filter:blur(6px);background:inherit}
+  .lv-0 .lamp,.lv-1 .lamp{background:var(--green)}
+  .lv-2 .lamp{background:var(--yellow)}
+  .lv-3 .lamp{background:var(--orange)}
+  .lv-4 .lamp{background:var(--red);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @media (prefers-reduced-motion:reduce){.lv-4 .lamp{animation:none}}
+  .loc-main{flex:1;min-width:0}
+  .loc-name{font-weight:700;font-size:1.12rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .loc-sub{color:var(--muted);font-size:.85rem;margin-top:2px}
+  .verdict{margin-top:9px;font-size:.98rem}
+  .badge{
+    display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 9px;border-radius:7px;border:1px solid transparent;
+  }
+  .lv-0 .badge,.lv-1 .badge{color:#7ff0b0;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3)}
+  .lv-2 .badge{color:#f7d774;background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.34)}
+  .lv-3 .badge{color:#fdba74;background:rgba(249,115,22,.14);border-color:rgba(249,115,22,.36)}
+  .lv-4 .badge{color:#fca5a5;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)}
+  .remove{
+    position:absolute;top:12px;right:12px;background:transparent;border:0;color:#5f6f85;
+    cursor:pointer;font-size:1.1rem;line-height:1;padding:6px;border-radius:8px;transition:color .2s,background .2s;
+  }
+  .remove:hover{color:var(--red);background:rgba(239,68,68,.1)}
+
+  /* timeline / days */
+  .days{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+    border-top:1px solid var(--border);margin-top:4px}
+  .day{background:var(--bg-2);padding:12px 14px;min-height:96px}
+  .day-h{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+  .ev{font-size:.86rem;display:flex;gap:7px;align-items:baseline;margin:5px 0}
+  .ev .t{color:var(--muted);flex:none;width:44px;font-variant-numeric:tabular-nums}
+  .ev .d-0,.ev .d-1{color:var(--green)}
+  .ev .d-2{color:var(--yellow)}.ev .d-3{color:var(--orange)}.ev .d-4{color:var(--red)}
+  .calm{color:#5f6f85;font-size:.84rem;font-style:italic}
+  .consensus{padding:11px 18px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted);
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .consensus b{color:var(--text);font-weight:600}
+  .meter{display:inline-flex;gap:3px}
+  .meter i{width:16px;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
+  .meter i.on{background:var(--orange)}
+
+  .card.loading .card-head{opacity:.6}
+  .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:var(--teal);
+    border-radius:50%;animation:sp .8s linear infinite;display:inline-block;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .err{color:#fca5a5;font-size:.88rem;padding:0 18px 16px}
+
+  .empty{
+    text-align:center;color:var(--muted);border:1px dashed var(--border);border-radius:var(--radius);
+    padding:40px 24px;margin-top:26px;background:rgba(255,255,255,.02)
+  }
+  .empty svg{width:44px;height:44px;opacity:.5;margin-bottom:10px}
+
+  footer{margin-top:40px;color:#5f6f85;font-size:.82rem;line-height:1.7;text-align:center}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px solid transparent}
+  footer a:hover{color:var(--teal);border-color:var(--teal)}
+  .disclaimer{
+    margin-top:22px;background:rgba(234,179,8,.06);border:1px solid rgba(234,179,8,.2);
+    border-radius:12px;padding:13px 16px;color:#d9c48a;font-size:.85rem
+  }
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px;flex-wrap:wrap}
+  .toolbar .updated{color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <span class="bolt" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#2bd0be" stroke="#2bd0be" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="mark">SelfStorm</span>
+    </div>
+    <p class="tagline"><b>Deine Unwetter- und Hagel-Ampel.</b> Mehrere Wettermodelle werden ehrlich gegeneinander gerechnet — für deine Orte. Kostenlos, kein Konto, deine Orte bleiben in deinem Browser.</p>
+  </header>
+
+  <section class="search">
+    <div class="search-row">
+      <input id="q" type="text" placeholder="Ort oder Postleitzahl eingeben — z. B. Hamburg oder 22145" autocomplete="off" />
+      <button class="btn" id="add">Suchen</button>
+    </div>
+    <div class="hint" id="hint">Tipp: Du kannst mehrere Orte hinzufügen. Beispiele:</div>
+    <div class="chips" id="results"></div>
+  </section>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <span class="updated" id="updated"></span>
+    <button class="btn ghost" id="refresh">Aktualisieren</button>
+  </div>
+
+  <main id="list"></main>
+
+  <div id="emptyState" class="empty">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11Z" stroke="#93a1b5" stroke-width="1.4"/><circle cx="12" cy="10" r="2.5" stroke="#93a1b5" stroke-width="1.4"/></svg>
+    <div>Noch kein Ort ausgewählt.<br>Suche oben deinen Ort oder deine PLZ, um die Unwetter-Ampel zu sehen.</div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <b>SelfStorm ist ein freies Hobby-Projekt und ersetzt keine amtliche Warnung.</b>
+    Die Einschätzung beruht auf öffentlichen Wettermodellen und kann sich kurzfristig ändern.
+    Im Ernstfall gilt immer der Deutsche Wetterdienst (WarnWetter-App / NINA).
+  </div>
+
+  <footer>
+    Datenquellen: Open-Meteo (mehrere Wettermodelle), Zippopotam (PLZ).<br>
+    Teil der <a href="https://selfcoder.de" target="_blank" rel="noopener">Self-Reihe</a> · selbst gehostet, datensparsam.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const GEO="https://geocoding-api.open-meteo.com/v1/search";
+  const FC="https://api.open-meteo.com/v1/forecast";
+  const ZIP="https://api.zippopotam.us/de/";
+  const KEY="selfstorm.locations.v1";
+  const MODELS=["icon_seamless","gfs_seamless","ecmwf_ifs025","gem_seamless"];
+  const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
+
+  const $=s=>document.querySelector(s);
+  const q=$("#q"), results=$("#results"), list=$("#list"),
+        emptyState=$("#emptyState"), toolbar=$("#toolbar"), updated=$("#updated");
+
+  let locations=load();
+
+  function load(){ try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]} }
+  function save(){ localStorage.setItem(KEY, JSON.stringify(locations)); }
+  function id(l){ return l.lat.toFixed(3)+","+l.lon.toFixed(3); }
+
+  // ---------- Suche ----------
+  async function search(term){
+    term=term.trim(); if(!term) return;
+    results.innerHTML='<span class="chip">Suche…</span>';
+    try{
+      let hits=[];
+      if(/^\d{4,5}$/.test(term)){
+        hits=await searchZip(term);
+        if(!hits.length) hits=await searchName(term);
+      }else{
+        hits=await searchName(term);
+      }
+      renderResults(hits);
+    }catch(e){
+      results.innerHTML='<span class="chip">Suche fehlgeschlagen — bitte erneut versuchen.</span>';
+    }
+  }
+  async function searchName(term){
+    const r=await fetch(`${GEO}?name=${encodeURIComponent(term)}&count=6&language=de&format=json`);
+    const j=await r.json();
+    return (j.results||[]).map(x=>({
+      name:x.name, lat:x.latitude, lon:x.longitude,
+      sub:[x.admin1, x.country_code].filter(Boolean).join(", ")
+    }));
+  }
+  async function searchZip(plz){
+    const r=await fetch(ZIP+plz);
+    if(!r.ok) return [];
+    const j=await r.json();
+    return (j.places||[]).map(p=>({
+      name:plz+" "+p["place name"],
+      lat:parseFloat(p.latitude), lon:parseFloat(p.longitude),
+      sub:"Deutschland"
+    }));
+  }
+  function renderResults(hits){
+    if(!hits.length){ results.innerHTML='<span class="chip">Nichts gefunden. Anderen Begriff probieren?</span>'; return; }
+    results.innerHTML="";
+    hits.forEach(h=>{
+      const c=document.createElement("button");
+      c.className="chip";
+      c.innerHTML=`${escapeHtml(h.name)} <small>${escapeHtml(h.sub||"")}</small>`;
+      c.onclick=()=>addLocation(h);
+      results.appendChild(c);
+    });
+  }
+  function exampleChips(){
+    const ex=[{name:"Hamburg",lat:53.55,lon:9.99,sub:"HH, DE"},
+              {name:"München",lat:48.14,lon:11.58,sub:"BY, DE"},
+              {name:"Köln",lat:50.94,lon:6.96,sub:"NRW, DE"}];
+    results.innerHTML="";
+    ex.forEach(h=>{
+      const c=document.createElement("button");
+      c.className="chip"; c.innerHTML=`${h.name} <small>${h.sub}</small>`;
+      c.onclick=()=>addLocation(h); results.appendChild(c);
+    });
+  }
+
+  function addLocation(h){
+    const loc={name:h.name, lat:h.lat, lon:h.lon, sub:h.sub||""};
+    if(locations.some(l=>id(l)===id(loc))){ q.value=""; results.innerHTML=""; return; }
+    locations.push(loc); save(); q.value=""; results.innerHTML="";
+    render(); loadOne(loc);
+  }
+  function removeLocation(loc){
+    locations=locations.filter(l=>id(l)!==id(loc)); save(); render();
+  }
+
+  // ---------- Analyse ----------
+  function analyze(fc){
+    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, tags:new Set()};
+    for(let i=0;i<t.length;i++){
+      const code=h.weather_code[i], cape=num(h.cape[i]), gust=num(h.wind_gusts_10m[i]),
+            pr=num(h.precipitation[i]), pp=num(h.precipitation_probability[i]);
+      let lv=0; const tags=[];
+      if(code===96||code===99){ lv=Math.max(lv,4); tags.push("Hagel"); }
+      else if(code===95){ lv=Math.max(lv, cape>=1500?4:3); tags.push("Gewitter"); }
+      if(cape>=1200){ lv=Math.max(lv,3); tags.push("sehr labil"); }
+      else if(cape>=800){ lv=Math.max(lv,2); tags.push("labil"); }
+      if(gust>=90){ lv=Math.max(lv,4); tags.push("Orkanböen"); }
+      else if(gust>=70){ lv=Math.max(lv,3); tags.push("Sturmböen"); }
+      else if(gust>=55){ lv=Math.max(lv,2); tags.push("Windböen"); }
+      if(pr>=15){ lv=Math.max(lv,3); tags.push("Starkregen"); }
+      else if(pr>=5){ lv=Math.max(lv,2); tags.push("kräftiger Regen"); }
+      if(lv>=2){ out.events.push({time:t[i],code,cape,gust,pr,pp,lv,tags}); tags.forEach(x=>out.tags.add(x)); }
+      if(lv>out.peak){ out.peak=lv; out.peakTime=t[i]; }
+    }
+    return out;
+  }
+
+  function verdictText(a){
+    if(a.peak<=1) return "Ruhig — kein Unwetter- oder Hagelsignal in den nächsten 3 Tagen.";
+    const when=fmtWhen(a.peakTime);
+    const hail=a.tags.has("Hagel");
+    const thunder=a.events.some(e=>e.code>=95);
+    if(a.peak===4){
+      return (hail? "Hagelgefahr" : "Unwettergefahr")+" — Schwerpunkt "+when+". "+
+             (hail? "Auto möglichst unterstellen oder schützen." : "Empfindliches im Freien sichern.");
+    }
+    if(a.peak===3) return "Gewitter-/Sturmgefahr — Schwerpunkt "+when+". Lage im Auge behalten.";
+    return "Leicht labile Lage — Schwerpunkt "+when+". Aktuell kein akutes Hagelrisiko.";
+  }
+
+  // ---------- Konsens (mehrere Modelle) ----------
+  async function consensus(loc){
+    try{
+      const p=new URLSearchParams({latitude:loc.lat,longitude:loc.lon,
+        hourly:"weather_code",timezone:"auto",forecast_days:"3",models:MODELS.join(",")});
+      const r=await fetch(`${FC}?${p}`); const j=await r.json();
+      const h=j.hourly||{}; let total=0, warn=0, day=null;
+      MODELS.forEach(m=>{
+        const arr=h["weather_code_"+m]; if(!arr) return; total++;
+        const hit=arr.findIndex(c=>c>=95);
+        if(hit>=0){ warn++; if(day===null||h.time[hit]<day) day=h.time[hit]; }
+      });
+      return {total,warn,day};
+    }catch(e){ return null; }
+  }
+
+  // ---------- Rendering ----------
+  async function loadOne(loc){
+    const el=document.getElementById("card-"+cssId(loc));
+    if(!el) return;
+    el.classList.add("loading");
+    try{
+      const p=new URLSearchParams({latitude:loc.lat,longitude:loc.lon,
+        hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code",
+        daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max",
+        timezone:"auto",forecast_days:"3"});
+      const r=await fetch(`${FC}?${p}`);
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      const fc=await r.json();
+      const a=analyze(fc);
+      const con=await consensus(loc);
+      paintCard(el, loc, a, con);
+      stampUpdate();
+    }catch(e){
+      el.className="card lv-0";
+      el.innerHTML=cardHeadHtml(loc,0,"Daten nicht abrufbar")+
+        `<div class="err">Konnte die Wetterdaten gerade nicht laden. Später erneut „Aktualisieren".</div>`;
+      attachRemove(el,loc);
+    }
+  }
+
+  function paintCard(el, loc, a, con){
+    el.className="card lv-"+a.peak;
+    el.innerHTML=cardHeadHtml(loc, a.peak, verdictText(a))+daysHtml(a)+consensusHtml(con);
+    attachRemove(el,loc);
+  }
+
+  function cardHeadHtml(loc, lv, verdict){
+    const label=["Ruhig","Ruhig","Beobachten","Warnung","Unwetter"][lv];
+    return `<button class="remove" title="Ort entfernen" data-x>✕</button>
+      <div class="card-head">
+        <span class="lamp"></span>
+        <div class="loc-main">
+          <div class="loc-name">${escapeHtml(loc.name)} <span class="badge">${label}</span></div>
+          <div class="loc-sub">${escapeHtml(loc.sub||"")}</div>
+          <div class="verdict">${verdict}</div>
+        </div>
+      </div>`;
+  }
+
+  function daysHtml(a){
+    const byDay={};
+    a.events.forEach(e=>{ const d=e.time.slice(0,10); (byDay[d]=byDay[d]||[]).push(e); });
+    const days=Object.keys(byDay).sort().slice(0,3);
+    // ensure we always show 3 day columns based on peak spread; fallback to next 3 dates
+    let cols=days;
+    if(cols.length<3){
+      const base=a.events[0]?a.events[0].time.slice(0,10):new Date().toISOString().slice(0,10);
+      cols=[]; const d0=new Date(base+"T12:00");
+      for(let i=0;i<3;i++){ const d=new Date(d0); d.setDate(d0.getDate()+i); cols.push(d.toISOString().slice(0,10)); }
+    }
+    return `<div class="days">`+cols.map(d=>{
+      const evs=(byDay[d]||[]).slice(0,4);
+      const head=fmtDay(d);
+      const body=evs.length? evs.map(e=>{
+        const label=e.code>=95?(e.code>=96?"Hagel":"Gewitter"):e.tags[0]||"—";
+        return `<div class="ev"><span class="t">${fmtHour(e.time)}</span><span class="d-${e.lv}">${label}${e.cape>=800?` · CAPE ${Math.round(e.cape)}`:""}</span></div>`;
+      }).join("") : `<div class="calm">ruhig</div>`;
+      return `<div class="day"><div class="day-h">${head}</div>${body}</div>`;
+    }).join("")+`</div>`;
+  }
+
+  function consensusHtml(con){
+    if(!con || !con.total) return "";
+    const on=con.warn, tot=con.total;
+    let bars=""; for(let i=0;i<tot;i++){ bars+=`<i class="${i<on?"on":""}"></i>`; }
+    const txt = on===0
+      ? `Gewitter-Konsens: <b>kein</b> Modell sieht Gewitter.`
+      : `Gewitter-Konsens: <b>${on} von ${tot}</b> Modellen${con.day?` (ab ${fmtWhen(con.day)})`:""}.`;
+    return `<div class="consensus"><span class="meter">${bars}</span> ${txt}</div>`;
+  }
+
+  function attachRemove(el,loc){
+    const b=el.querySelector("[data-x]"); if(b) b.onclick=()=>removeLocation(loc);
+  }
+
+  function render(){
+    const has=locations.length>0;
+    emptyState.hidden=has; toolbar.hidden=!has;
+    if(!has){ list.innerHTML=""; exampleChips(); return; }
+    list.innerHTML=locations.map(loc=>
+      `<div class="card lv-0 loading" id="card-${cssId(loc)}">
+         ${cardHeadHtml(loc,0,'<span class="spin"></span> Lade Wetterdaten…')}
+       </div>`).join("");
+    locations.forEach(attachHeadRemove);
+  }
+  function attachHeadRemove(loc){
+    const el=document.getElementById("card-"+cssId(loc)); attachRemove(el,loc);
+  }
+
+  function refreshAll(){ locations.forEach(loadOne); }
+  function stampUpdate(){
+    const d=new Date();
+    updated.textContent="Stand: "+d.toLocaleString("de-DE",{weekday:"short",hour:"2-digit",minute:"2-digit"})+" Uhr";
+  }
+
+  // ---------- Helpers ----------
+  function num(v){ return (v==null||isNaN(v))?0:v; }
+  function cssId(loc){ return id(loc).replace(/[^0-9-]/g,"_"); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function fmtDay(d){ const dt=new Date(d+"T12:00"); return WD[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+"."; }
+  function fmtHour(t){ return t.slice(11,16); }
+  function fmtWhen(t){ if(!t) return ""; const dt=new Date(t); return WD[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+". um "+t.slice(11,16)+" Uhr"; }
+
+  // ---------- Events ----------
+  $("#add").onclick=()=>search(q.value);
+  q.addEventListener("keydown",e=>{ if(e.key==="Enter") search(q.value); });
+  $("#refresh").onclick=refreshAll;
+
+  // ---------- Init ----------
+  render();
+  if(locations.length) refreshAll();
+})();
+</script>
+</body>
+</html>
