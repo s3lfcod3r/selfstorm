@@ -55,7 +55,7 @@ function haz(code, cape, gust, pr, temp, snow, vis) {
   if (code === 66 || code === 67) hits.push([3, 5]); else if (temp <= 1 && temp >= -3 && pr >= 0.1) hits.push([2, 5]);
   if (temp <= -10) hits.push([3, 5]); else if (temp <= -5) hits.push([2, 5]);
   if (snow >= 5 || code === 75 || code === 86) hits.push([3, 6]); else if (snow >= 1 || code === 71 || code === 73 || code === 85) hits.push([2, 6]);
-  if (vis > 0 && vis < 200) hits.push([3, 7]); else if ((vis > 0 && vis < 1000) || code === 45 || code === 48) hits.push([2, 7]);
+  if (vis > 0 && vis < 200) hits.push([3, 7]); else if (vis > 0 && vis < 1000) hits.push([2, 7]); else if (vis <= 0 && (code === 45 || code === 48)) hits.push([2, 7]);
   if (!hits.length) return [0, 0];
   hits.sort((a, b) => b[0] - a[0]);
   return hits[0];
