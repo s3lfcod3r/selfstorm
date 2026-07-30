@@ -203,6 +203,28 @@
   .dwd-time{color:var(--muted);font-size:.82rem;margin-top:3px}
   .dwd-instr{color:var(--text);font-size:.85rem;margin-top:6px;line-height:1.5}
 
+  /* Nowcast (Regen in X Min) */
+  .nowcast{padding:11px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px}
+  .nowcast.dry{color:var(--muted);font-size:.9rem}
+  .nc-msg{font-weight:600;font-size:.92rem;white-space:nowrap}
+  .nc-svg{height:30px;flex:1;min-width:60px}
+  .nc-ax{display:flex;flex-direction:column;font-size:.66rem;color:var(--muted);gap:12px;text-align:right;white-space:nowrap}
+  /* Detail-Kacheln */
+  .tiles{padding:14px 18px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
+  .tile{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:12px;padding:11px 12px}
+  .tile-h{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
+  .tile.wide .spk{width:100%;height:auto;display:block}
+  .tile-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
+  .tile-ax{display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted);margin-top:4px}
+  .gauge,.sun{width:100%;height:auto;max-height:100px;display:block}
+  .g-num{fill:var(--text);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+  .g-u{fill:var(--muted);font-size:9px}
+  .s-t{fill:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
+  .spk-n{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+  .feel-n{font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
+  .feel-s{font-size:.72rem;color:var(--muted);margin-top:4px}
+  .tile.mini{display:flex;flex-direction:column;justify-content:center}
+
   .card.loading .card-head{opacity:.6}
   .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:var(--teal);
     border-radius:50%;animation:sp .8s linear infinite;display:inline-block;vertical-align:-2px}
@@ -250,6 +272,17 @@
     </div>
     <p class="tagline"><b>Deine Unwetter- und Hagel-Ampel.</b> Mehrere Wettermodelle werden ehrlich gegeneinander gerechnet — für deine Orte. Kostenlos, kein Konto, deine Orte bleiben in deinem Browser.</p>
   </header>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+    <linearGradient id="ncg" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="0">
+      <stop offset="0" stop-color="#4a90d9"/><stop offset=".5" stop-color="#33a78c"/><stop offset=".8" stop-color="#e8c547"/><stop offset="1" stop-color="#e5484d"/></linearGradient>
+    <linearGradient id="ts" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4a90d9"/><stop offset=".55" stop-color="#e8c547"/><stop offset="1" stop-color="#f5892f"/></linearGradient>
+    <linearGradient id="tf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8c547" stop-opacity=".2"/><stop offset="1" stop-color="#e8c547" stop-opacity="0"/></linearGradient>
+    <linearGradient id="sunA" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3a4a5e"/><stop offset=".3" stop-color="#3a4a5e"/><stop offset=".5" stop-color="#f0b429"/><stop offset=".7" stop-color="#3a4a5e"/><stop offset="1" stop-color="#3a4a5e"/></linearGradient>
+  </defs></svg>
 
   <section class="warnmap" id="warnmap" hidden>
     <div class="wm-head">
@@ -560,14 +593,16 @@
     try{
       const p=new URLSearchParams({latitude:loc.lat,longitude:loc.lon,
         hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
-        daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max",
+        minutely_15:"precipitation",
+        current:"temperature_2m,apparent_temperature,relative_humidity_2m,wind_gusts_10m,weather_code",
+        daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min,sunrise,sunset",
         timezone:"auto",forecast_days:"3"});
       const [r, dwd]=await Promise.all([ fetch(`${FC}?${p}`), alerts(loc) ]);
       if(!r.ok) throw new Error("HTTP "+r.status);
       const fc=await r.json();
       const a=analyze(fc);
       const con=await consensus(loc);
-      paintCard(el, loc, a, dwd, con);
+      paintCard(el, loc, a, dwd, con, fc);
       stampUpdate();
     }catch(e){
       el.className="card lv-0";
@@ -577,13 +612,13 @@
     }
   }
 
-  function paintCard(el, loc, a, dwd, con){
+  function paintCard(el, loc, a, dwd, con, fc){
     const dwdLvl=(dwd&&dwd.level)||0, lvl=Math.max(a.peak, dwdLvl);
     const verdict=(dwd&&dwd.items&&dwd.items.length && dwdLvl>=a.peak)
       ? `Amtliche Warnung: ${escapeHtml(cap(dwd.items[0].event))} — Details unten.`
       : verdictText(a);
     el.className="card lv-"+lvl;
-    el.innerHTML=cardHeadHtml(loc, lvl, verdict)+dwdHtml(dwd)+daysHtml(a)+consensusHtml(con);
+    el.innerHTML=cardHeadHtml(loc, lvl, verdict)+nowcastHtml(fc)+dwdHtml(dwd)+daysHtml(a)+consensusHtml(con)+tilesHtml(fc);
     attachRemove(el,loc);
   }
 
@@ -647,6 +682,88 @@
         <div class="dwd-time">${fmtRange(it.onset,it.expires)}</div>
         ${it.instruction?`<div class="dwd-instr">${escapeHtml(it.instruction)}</div>`:""}
       </div>`).join("")+`</div>`;
+  }
+
+  // ---------- Detail: Nowcast, Kurven, Kacheln ----------
+  function nowIndex(times){ const now=Date.now(); let b=0; for(let i=0;i<times.length;i++){ if(new Date(times[i]).getTime()<=now) b=i; else break; } return b; }
+
+  function nowcastHtml(fc){
+    const m=fc&&fc.minutely_15; if(!m||!m.time) return "";
+    const t=m.time, prA=m.precipitation||[], i0=nowIndex(t), end=Math.min(i0+8,t.length);
+    const slice=[]; for(let i=i0;i<end;i++) slice.push(num(prA[i]));
+    if(!slice.length) return "";
+    const hasRain=slice.some(v=>v>0.1), rainNow=slice[0]>0.1;
+    let msg;
+    if(rainNow){ const st=slice.findIndex((v,k)=>k>0&&v<=0.1); msg=st>0?`Regen — lässt in ~${st*15} Min nach`:"Regen — hält vorerst an"; }
+    else { const st=slice.findIndex(v=>v>0.1); msg=st>0?`Regen in ~${st*15} Min`:"Kein Regen in der nächsten Stunde"; }
+    if(!hasRain) return `<div class="nowcast dry">🌤 ${msg}</div>`;
+    const W=100,H=30,bw=W/slice.length,mx=Math.max(0.4,...slice);
+    let bars=""; slice.forEach((v,k)=>{ const h=Math.max(1.5,v/mx*H); bars+=`<rect x="${(k*bw+0.4).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${(bw-0.8).toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="url(#ncg)"/>`; });
+    return `<div class="nowcast"><div class="nc-msg">🌧 ${msg}</div>
+      <svg class="nc-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>
+      <div class="nc-ax"><span>jetzt</span><span>+2 Std</span></div></div>`;
+  }
+
+  function smoothPath(p){ let d="M"+p[0][0].toFixed(1)+","+p[0][1].toFixed(1);
+    for(let i=0;i<p.length-1;i++){ const a=p[i-1]||p[i],b=p[i],c=p[i+1],e=p[i+2]||c;
+      d+="C"+(b[0]+(c[0]-a[0])/6).toFixed(1)+","+(b[1]+(c[1]-a[1])/6).toFixed(1)+" "+(c[0]-(e[0]-b[0])/6).toFixed(1)+","+(c[1]-(e[1]-b[1])/6).toFixed(1)+" "+c[0].toFixed(1)+","+c[1].toFixed(1); }
+    return d; }
+
+  function sparkTile(fc){
+    const h=fc&&fc.hourly; if(!h||!h.time) return "";
+    const i0=nowIndex(h.time), N=24, T=[], P=[];
+    for(let k=0;k<N&&i0+k<h.time.length;k++){ T.push(num(h.temperature_2m[i0+k])); P.push(num(h.precipitation_probability[i0+k])); }
+    if(T.length<3) return "";
+    const W=300,H=94,base=H-16,top=14,tmin=Math.min(...T),tmax=Math.max(...T),span=Math.max(1,tmax-tmin);
+    const X=k=>6+k/(T.length-1)*288, Y=v=>top+(1-(v-tmin)/span)*(base-top);
+    const pts=T.map((v,k)=>[X(k),Y(v)]), line=smoothPath(pts), area=line+` L${X(T.length-1).toFixed(1)},${base} L6,${base} Z`;
+    let rb=""; P.forEach((p,k)=>{ if(p<5)return; const bh=p/100*13; rb+=`<rect x="${(X(k)-3).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="6" height="${bh.toFixed(1)}" rx="1.5" fill="#4a90d9" opacity=".3"/>`; });
+    const iMax=T.indexOf(tmax), iMin=T.indexOf(tmin);
+    const mark=(k,v,c,dy)=>`<circle cx="${X(k).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3" fill="${c}"/><text class="spk-n" x="${X(k).toFixed(1)}" y="${(Y(v)+dy).toFixed(1)}" text-anchor="middle" fill="${c}">${Math.round(v)}°</text>`;
+    return `<div class="tile wide"><div class="tile-h">24-Stunden-Verlauf</div>
+      <svg class="spk" viewBox="0 0 ${W} ${H}">${rb}
+        <path d="${area}" fill="url(#tf)"/>
+        <path d="${line}" fill="none" stroke="url(#ts)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        ${iMax>0?mark(iMax,tmax,"#f5892f",-6):""}${(iMin>0&&iMin!==iMax)?mark(iMin,tmin,"#4a90d9",12):""}
+        <circle cx="${X(0).toFixed(1)}" cy="${Y(T[0]).toFixed(1)}" r="4" fill="#33a78c" stroke="var(--surface)" stroke-width="1.6"/></svg>
+      <div class="tile-ax"><span>jetzt · ▏Regen</span><span>+24 Std</span></div></div>`;
+  }
+
+  function gaugeTile(fc){
+    const cur=fc&&fc.current, d=fc&&fc.daily;
+    const g=cur?num(cur.wind_gusts_10m):0, gmax=(d&&d.wind_gusts_10m_max)?num(d.wind_gusts_10m_max[0]):g;
+    const CAP=120,R=42,a0=135,sw=270,fr=Math.min(1,g/CAP),frM=Math.min(1,gmax/CAP);
+    const pol=(a,rr)=>{ const r=a*Math.PI/180; return [60+ (rr==null?R:rr)*Math.cos(r), 56+(rr==null?R:rr)*Math.sin(r)]; };
+    const arc=(f0,f1)=>{ const p0=pol(a0+sw*f0),p1=pol(a0+sw*f1),lg=(sw*(f1-f0))>180?1:0; return `M${p0[0].toFixed(1)},${p0[1].toFixed(1)} A${R},${R} 0 ${lg} 1 ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`; };
+    const ta=a0+sw*frM,t0=pol(ta,R-7),t1=pol(ta,R+3);
+    return `<div class="tile"><div class="tile-h">Windböen</div>
+      <svg class="gauge" viewBox="0 0 120 92">
+        <path d="${arc(0,1)}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round"/>
+        <path d="${arc(0,fr)}" fill="none" stroke="#33a78c" stroke-width="9" stroke-linecap="round"/>
+        <line x1="${t0[0].toFixed(1)}" y1="${t0[1].toFixed(1)}" x2="${t1[0].toFixed(1)}" y2="${t1[1].toFixed(1)}" stroke="#e8c547" stroke-width="2.5" stroke-linecap="round"/>
+        <text class="g-num" x="60" y="58" text-anchor="middle">${Math.round(g)}</text>
+        <text class="g-u" x="60" y="72" text-anchor="middle">km/h · Spitze ${Math.round(gmax)}</text></svg></div>`;
+  }
+
+  function sunTile(fc){
+    const d=fc&&fc.daily; if(!d||!d.sunrise||!d.sunrise[0]) return "";
+    const sr=new Date(d.sunrise[0]).getTime(), ss=new Date(d.sunset[0]).getTime(), now=Date.now();
+    let fr=(now-sr)/(ss-sr); const up=fr>=0&&fr<=1; fr=Math.max(0,Math.min(1,fr));
+    const bx=10+fr*100, by=64-Math.sin(fr*Math.PI)*44;
+    return `<div class="tile"><div class="tile-h">Sonne</div>
+      <svg class="sun" viewBox="0 0 120 78">
+        <path d="M10 64 Q60 20 110 64" fill="none" stroke="url(#sunA)" stroke-width="2.2"/>
+        <line x1="8" y1="64" x2="112" y2="64" stroke="rgba(255,255,255,.15)" stroke-width="1" stroke-dasharray="4 4"/>
+        ${up?`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="5" fill="#f0b429"/>`:`<circle cx="${bx.toFixed(1)}" cy="63" r="4" fill="#c9d4e0"/>`}
+        <text class="s-t" x="12" y="76" text-anchor="middle">↑ ${d.sunrise[0].slice(11,16)}</text>
+        <text class="s-t" x="108" y="76" text-anchor="middle">↓ ${d.sunset[0].slice(11,16)}</text></svg></div>`;
+  }
+
+  function tilesHtml(fc){
+    if(!fc||!fc.hourly) return "";
+    const c=fc.current;
+    const feel=c?`<div class="tile mini"><div class="tile-h">Gefühlt</div><div class="feel-n">${Math.round(num(c.apparent_temperature))}°</div><div class="feel-s">akt. ${Math.round(num(c.temperature_2m))}° · ${Math.round(num(c.relative_humidity_2m))}% Luftf.</div></div>`:"";
+    return `<div class="tiles">${sparkTile(fc)}<div class="tile-row">${gaugeTile(fc)}${sunTile(fc)}${feel}</div></div>`;
   }
 
   function attachRemove(el,loc){
