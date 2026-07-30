@@ -6,7 +6,7 @@
   const cv=document.getElementById("tl-canvas"); if(!cv) return;
   const ctx=cv.getContext("2d");
   const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
-  const COLORS={2:"#d29922",3:"#e0791f",4:"#f85149"};
+  const COLORS={2:"#f4c534",3:"#f5892f",4:"#e5484d"};
   const HAZ={1:"Gewitter/Hagel",2:"Sturm",3:"Starkregen",4:"Hitze",5:"Frost/Glätte",6:"Schnee",7:"Nebel"};
   const $=id=>document.getElementById(id);
 

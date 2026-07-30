@@ -21,10 +21,11 @@
     --teal:var(--self-teal);
     --teal-bright:var(--self-teal-bright);
     --teal-glow:rgba(51,167,140,.45);
-    --green:var(--self-green);
-    --yellow:var(--self-yellow);
-    --orange:#e0791f; /* funktionale Ampel-Bernsteinstufe (Signalfarbe, keine Markenakzentfarbe) */
-    --red:var(--self-red);
+    /* Warnstufen: kontraststark & farbenblind-robuster auf dunklem Grund (Gold statt Neon/Braun) */
+    --green:#3fb56b;
+    --yellow:#f4c534;
+    --orange:#f5892f;
+    --red:#e5484d;
     --radius:14px;
     --shadow:0 18px 50px -18px rgba(0,0,0,.7);
     --ease:var(--self-ease);
@@ -299,6 +300,7 @@
   <section class="search">
     <div class="search-row">
       <input id="q" type="text" placeholder="Ort oder Postleitzahl eingeben — z. B. Hamburg oder 22145" autocomplete="off" />
+      <button class="btn ghost" id="geo" title="Meinen Standort verwenden" aria-label="Meinen Standort verwenden">📍</button>
       <button class="btn" id="add">Suchen</button>
     </div>
     <div class="hint" id="hint">Tipp: Du kannst mehrere Orte hinzufügen. Beispiele:</div>
@@ -630,7 +632,7 @@
   }
 
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
-  function cap(s){ s=String(s||""); return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); }
+  function cap(s){ return String(s||"").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g,(m,a,b)=>a+b.toUpperCase()); }
   function fmtRange(a,b){
     const f=t=>{ if(!t) return ""; const d=new Date(t); return WD[d.getDay()]+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}); };
     const s=f(a), e=f(b);
@@ -675,7 +677,10 @@
   function num(v){ return (v==null||isNaN(v))?0:v; }
   function cssId(loc){ return id(loc).replace(/[^0-9-]/g,"_"); }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
-  function fmtDay(d){ const dt=new Date(d+"T12:00"); return WD[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+"."; }
+  function fmtDay(d){ const dt=new Date(d+"T12:00"), t=new Date(); t.setHours(12,0,0,0);
+    const diff=Math.round((dt-t)/86400000);
+    if(diff===0) return "Heute"; if(diff===1) return "Morgen";
+    return WD[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+"."; }
   function fmtHour(t){ return t.slice(11,16); }
   function fmtWhen(t){ if(!t) return ""; const dt=new Date(t); return WD[dt.getDay()]+" "+dt.getDate()+"."+(dt.getMonth()+1)+". um "+t.slice(11,16)+" Uhr"; }
 
@@ -683,6 +688,20 @@
   $("#add").onclick=()=>search(q.value);
   q.addEventListener("keydown",e=>{ if(e.key==="Enter") search(q.value); });
   $("#refresh").onclick=refreshAll;
+
+  const geoBtn=$("#geo");
+  if(geoBtn){
+    if(!navigator.geolocation){ geoBtn.style.display="none"; }
+    else geoBtn.onclick=()=>{
+      geoBtn.disabled=true; geoBtn.textContent="…";
+      navigator.geolocation.getCurrentPosition(
+        pos=>{ geoBtn.disabled=false; geoBtn.textContent="📍";
+          addLocation({name:"Mein Standort", lat:+pos.coords.latitude.toFixed(4), lon:+pos.coords.longitude.toFixed(4), sub:""}); },
+        ()=>{ geoBtn.disabled=false; geoBtn.textContent="📍"; $("#hint").textContent="Standort nicht verfügbar — bitte Ort oder PLZ eingeben."; },
+        {enableHighAccuracy:false, timeout:8000, maximumAge:300000}
+      );
+    };
+  }
 
   // ---------- Init ----------
   render();
@@ -696,7 +715,7 @@
   "use strict";
   const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
-  const LVCOL=["#3fb950","#3fb950","#d29922","#e0791f","#f85149"];
+  const LVCOL=["#3fb56b","#3fb56b","#f4c534","#f5892f","#e5484d"];
   // Repräsentativer Punkt (Landeshauptstadt) je Bundesland für die DWD-Abfrage
   const CAPS={"DE-BW":[48.78,9.18],"DE-BY":[48.14,11.58],"DE-BE":[52.52,13.40],"DE-BB":[52.40,13.06],
     "DE-HB":[53.08,8.80],"DE-HH":[53.55,9.99],"DE-HE":[50.08,8.24],"DE-MV":[53.63,11.42],
@@ -708,7 +727,7 @@
   const DPR=Math.max(1,Math.min(2,window.devicePixelRatio||1));
   const data={};
 
-  const cap=s=>{ s=String(s||""); return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); };
+  const cap=s=>String(s||"").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g,(m,a,b)=>a+b.toUpperCase());
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const hexA=(hex,a)=>{ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
   const polys=g=>g.type==="Polygon"?[g.coordinates]:g.coordinates;
