@@ -67,6 +67,10 @@
   .maplink:hover{border-color:var(--teal);background:var(--surface-2)}
   .maplink .arrow{color:var(--teal)}
 
+  /* Deutschland-Übersicht ein-/ausklappen */
+  .ov-toggle{display:block;width:100%;margin:20px 0 0;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:12px 15px;cursor:pointer;font-size:.9rem;text-align:left;transition:border-color .2s var(--ease),color .2s var(--ease)}
+  .ov-toggle:hover{border-color:var(--teal);color:var(--text)}
+
   /* Warnkarte nach Bundesländern */
   .warnmap{margin:24px 0 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 16px}
   .wm-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
@@ -284,6 +288,8 @@
       <stop offset="0" stop-color="#3a4a5e"/><stop offset=".3" stop-color="#3a4a5e"/><stop offset=".5" stop-color="#f0b429"/><stop offset=".7" stop-color="#3a4a5e"/><stop offset="1" stop-color="#3a4a5e"/></linearGradient>
   </defs></svg>
 
+  <button class="ov-toggle" id="ovToggle" hidden>Ganz Deutschland ansehen ▾</button>
+  <div id="overview">
   <section class="warnmap" id="warnmap" hidden>
     <div class="wm-head">
       <h2>Warnlage in Deutschland</h2>
@@ -329,6 +335,7 @@
       <span><i style="background:var(--red)"></i> Unwetter</span>
     </div>
   </section>
+  </div><!-- /overview -->
 
   <section class="search">
     <div class="search-row">
@@ -773,6 +780,9 @@
   function render(){
     const has=locations.length>0;
     emptyState.hidden=has; toolbar.hidden=!has;
+    const ov=document.getElementById("overview"), ovT=document.getElementById("ovToggle");
+    if(ov&&ovT){ if(has){ if(!ov.dataset.open) ov.hidden=true; ovT.hidden=false; }
+                 else { ov.hidden=false; ovT.hidden=true; } }
     if(!has){ list.innerHTML=""; exampleChips(); return; }
     list.innerHTML=locations.map(loc=>
       `<div class="card lv-0 loading" id="card-${cssId(loc)}">
@@ -805,6 +815,11 @@
   $("#add").onclick=()=>search(q.value);
   q.addEventListener("keydown",e=>{ if(e.key==="Enter") search(q.value); });
   $("#refresh").onclick=refreshAll;
+
+  const ovToggle=$("#ovToggle");
+  if(ovToggle) ovToggle.onclick=()=>{ const ov=$("#overview"); const show=ov.hidden; ov.hidden=!show;
+    if(show){ ov.dataset.open="1"; ovToggle.textContent="Deutschland-Übersicht ausblenden ▴"; window.dispatchEvent(new Event("resize")); }
+    else { delete ov.dataset.open; ovToggle.textContent="Ganz Deutschland ansehen ▾"; } };
 
   const geoBtn=$("#geo");
   if(geoBtn){
