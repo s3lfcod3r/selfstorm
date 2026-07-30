@@ -75,7 +75,7 @@ function fmtWhen(t) {
   return WD[dt.getUTCDay()] + " " + dt.getUTCDate() + "." + (dt.getUTCMonth() + 1) + ". um " + t.slice(11, 16) + " Uhr";
 }
 const LEVEL = ["Ruhig", "Ruhig", "Beobachten", "Warnung", "Unwetter"];
-const cap = s => { s = String(s || ""); return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase(); };
+const cap = s => String(s || "").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g, (m, a, b) => a + b.toUpperCase());
 
 // Amtliche DWD-Warnungen (Bright Sky) — autoritative Ebene, deckt auch Sturmflut/Hitze usw.
 async function fetchDwd(loc) {
