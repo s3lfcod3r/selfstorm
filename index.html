@@ -536,7 +536,7 @@
       if(code===66||code===67) hits.push([3,"Glatteis"]); else if(temp<=1&&temp>=-3&&pr>=0.1) hits.push([2,"Glättegefahr"]);
       if(temp<=-10) hits.push([3,"strenger Frost"]); else if(temp<=-5) hits.push([2,"Frost"]);
       if(snow>=5||code===75||code===86) hits.push([3,"starker Schneefall"]); else if(snow>=1||code===71||code===73||code===85) hits.push([2,"Schneefall"]);
-      if(vis>0&&vis<200) hits.push([3,"dichter Nebel"]); else if((vis>0&&vis<1000)||code===45||code===48) hits.push([2,"Nebel"]);
+      if(vis>0&&vis<200) hits.push([3,"dichter Nebel"]); else if(vis>0&&vis<1000) hits.push([2,"Nebel"]); else if(vis<=0&&(code===45||code===48)) hits.push([2,"Nebel"]);
       if(!hits.length) continue;
       hits.sort((a,b)=>b[0]-a[0]);
       const lv=hits[0][0], label=hits[0][1];
