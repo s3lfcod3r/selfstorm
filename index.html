@@ -208,9 +208,10 @@
   .spk-ax span:last-child{transform:none}
   @media(max-width:560px){.spk-ax .h3{display:none}}
   .tile-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
-  .gauge,.sun{width:100%;height:auto;max-height:84px;display:block}
+  .gauge,.sun{width:100%;height:auto;max-height:88px;display:block}
   .g-num{fill:var(--text);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
   .g-u{fill:var(--muted);font-size:9px}
+  .g-peak{fill:#e8c547;font-weight:600}
   .s-t{fill:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
   .feel-n{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
   .feel-s{font-size:.72rem;color:var(--muted);margin-top:4px}
@@ -809,12 +810,13 @@
     const arc=(f0,f1)=>{ const p0=pol(a0+sw*f0),p1=pol(a0+sw*f1),lg=(sw*(f1-f0))>180?1:0; return `M${p0[0].toFixed(1)},${p0[1].toFixed(1)} A${R},${R} 0 ${lg} 1 ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`; };
     const ta=a0+sw*frM,t0=pol(ta,R-7),t1=pol(ta,R+3);
     return `<div class="tile"><div class="tile-h">Windböen</div>
-      <svg class="gauge" viewBox="0 0 120 92">
+      <svg class="gauge" viewBox="0 0 120 98">
         <path d="${arc(0,1)}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round"/>
         <path d="${arc(0,fr)}" fill="none" stroke="#33a78c" stroke-width="9" stroke-linecap="round"/>
         <line x1="${t0[0].toFixed(1)}" y1="${t0[1].toFixed(1)}" x2="${t1[0].toFixed(1)}" y2="${t1[1].toFixed(1)}" stroke="#e8c547" stroke-width="2.5" stroke-linecap="round"/>
         <text class="g-num" x="60" y="58" text-anchor="middle">${Math.round(g)}</text>
-        <text class="g-u" x="60" y="72" text-anchor="middle">km/h · Spitze ${Math.round(gmax)}</text></svg></div>`;
+        <text class="g-u" x="60" y="72" text-anchor="middle">km/h</text>
+        <text class="g-u g-peak" x="60" y="94" text-anchor="middle">Spitze ${Math.round(gmax)}</text></svg></div>`;
   }
 
   function sunTile(fc){

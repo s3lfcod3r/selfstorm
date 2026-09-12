@@ -14,7 +14,7 @@
   const ICON={1:"⛈",2:"🌬",3:"💧",4:"🌡",5:"🧊",6:"❄",7:"🌫"};
   const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
-  // Repräsentativer Punkt (Landeshauptstadt) je Bundesland für die DWD-Abfrage
+  // Landeshauptstadt je Bundesland (Zuordnung von Raster-Randpunkten)
   const CAPS={"DE-BW":[48.78,9.18],"DE-BY":[48.14,11.58],"DE-BE":[52.52,13.40],"DE-BB":[52.40,13.06],
     "DE-HB":[53.08,8.80],"DE-HH":[53.55,9.99],"DE-HE":[50.08,8.24],"DE-MV":[53.63,11.42],
     "DE-NI":[52.37,9.73],"DE-NW":[51.23,6.78],"DE-RP":[50.00,8.27],"DE-SL":[49.24,6.99],
@@ -23,7 +23,10 @@
   const CITIES=[["Berlin",13.40,52.52,1],["Hamburg",9.99,53.55,1],["München",11.58,48.14,1],["Köln",6.96,50.94,1],
     ["Frankfurt",8.68,50.11,1],["Stuttgart",9.18,48.78,1],["Hannover",9.73,52.37,0],["Dresden",13.74,51.05,0],
     ["Nürnberg",11.08,49.45,0],["Bremen",8.80,53.08,0],["Rostock",12.10,54.09,0],["Erfurt",11.03,50.98,0]];
-  const LOC_KEY="selfstorm.locations.v1", DWD_KEY="selfstorm.dwd.v2";
+  // Amtlicher Landesschlüssel → ISO-Kürzel
+  const LAND={"01":"DE-SH","02":"DE-HH","03":"DE-NI","04":"DE-HB","05":"DE-NW","06":"DE-HE","07":"DE-RP","08":"DE-BW",
+    "09":"DE-BY","10":"DE-SL","11":"DE-BE","12":"DE-BB","13":"DE-MV","14":"DE-SN","15":"DE-ST","16":"DE-TH"};
+  const LOC_KEY="selfstorm.locations.v1", DWD_KEY="selfstorm.dwd.v3";
   const SPEEDS=[1,2,4], STEP_MS=520;
   const DPR=Math.max(1,Math.min(2,window.devicePixelRatio||1));
 
@@ -86,7 +89,7 @@
   let B,kx,scale,ox,oy,W=0,H=0,cellR=10;
   let idx=0, nowIdx=0, hover=null, selected=null, hoverPt=null;
   let playing=false, timer=null, speed=1, dirty=true;
-  const dwd={}; let dwdReady=false;
+  const dwd={}; let dwdReady=false, dwdFailed=false;
 
   Promise.all([
     fetch("map/grid.json").then(r=>r.json()),
@@ -129,17 +132,24 @@
   // ---------- DWD ----------
   async function loadDwd(){
     try{ const c=JSON.parse(sessionStorage.getItem(DWD_KEY)||"null"); if(c&&Date.now()-c.t<600000){ Object.assign(dwd,c.d); dwdReady=true; dirty=true; renderSide(); update(); return; } }catch(e){}
-    await Promise.all(states.map(async f=>{
-      const id=f.properties.id, cc=CAPS[id]; dwd[id]=[];
-      if(!cc) return;
-      try{
-        const r=await fetch(`https://api.brightsky.dev/alerts?lat=${cc[0]}&lon=${cc[1]}&tz=Europe/Berlin`);
-        const j=await r.json();
-        dwd[id]=(j.alerts||[]).map(x=>({event:x.event_de||x.event_en||"Warnung",sev:x.severity,onset:x.onset,expires:x.expires,instr:x.instruction_de||""}));
-      }catch(e){}
-    }));
+    // Eine Abfrage für ganz Deutschland; Zuordnung über die Warnzellen:
+    // 9-stellige Zell-ID, Ziffer 2–3 = Landesschlüssel (Gemeinde 7/8…, Kreis 1…; 5… = See/Küstengewässer)
+    states.forEach(f=>{ dwd[f.properties.id]=[]; });
+    try{
+      const r=await fetch("https://api.brightsky.dev/alerts?tz=Europe/Berlin");
+      if(!r.ok) throw 0;
+      const j=await r.json();
+      (j.alerts||[]).forEach(x=>{
+        const cells={};
+        (x.warn_cell_ids||[]).forEach(c=>{ const s=String(c); if(s.length!==9||!/^[178]/.test(s)) return;
+          const id=LAND[s.slice(1,3)]; if(id) cells[id]=(cells[id]||0)+1; });
+        for(const id in cells) if(dwd[id]) dwd[id].push({event:x.event_de||x.event_en||"Warnung",sev:x.severity,onset:x.onset,expires:x.expires,
+          cells:cells[id],head:x.headline_de||"",instr:x.instruction_de||""});
+      });
+      for(const id in dwd) dwd[id].sort((a,b)=>(SEVLV[b.sev]||2)-(SEVLV[a.sev]||2));
+    }catch(e){ dwdFailed=true; }
     dwdReady=true;
-    try{ sessionStorage.setItem(DWD_KEY,JSON.stringify({t:Date.now(),d:dwd})); }catch(e){}
+    if(!dwdFailed) try{ sessionStorage.setItem(DWD_KEY,JSON.stringify({t:Date.now(),d:dwd})); }catch(e){}
     dirty=true; renderSide(); update();
   }
   function dwdActive(id,t){
@@ -318,6 +328,7 @@
   }
   function fmtH(h){ const d=new Date(hourMs[h]); return `${WD[d.getDay()]} ${pad2(d.getHours())}:00`; }
   function fmtT(t){ if(!t) return ""; const d=new Date(t); return `${WD[d.getDay()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+  const areaTxt=n=>n===1?"1 Warngebiet":`${n} Warngebiete`;
   const sq=lv=>`<span class="dk-sq" style="background:${COL[lv]||"#3fb56b"}"></span>`;
 
   function renderSide(){
@@ -331,8 +342,8 @@
       side.innerHTML=
         `<div class="dk-sec"><span>Amtliche Warnungen</span><span class="dk-live">● live</span></div>`+
         (!dwdReady?`<div class="dk-empty">Lädt…</div>`
-          :off.length?off.map(s=>`<button class="dk-row" data-sel="${s.id}" data-go="${nowIdx}">${sq(s.lv)}<span class="dk-rt"><b>${esc(s.name)}</b><small>${esc([...new Set(s.items.map(i=>cap(i.event)))].slice(0,2).join(", "))}</small></span></button>`).join("")
-          :`<div class="dk-empty">✓ Aktuell keine amtlichen Warnungen.</div>`)+
+          :off.length?off.map(s=>`<button class="dk-row" data-sel="${s.id}" data-go="${nowIdx}">${sq(s.lv)}<span class="dk-rt"><b>${esc(s.name)}</b><small>${esc([...new Set(s.items.map(i=>cap(i.event)))].slice(0,2).join(", "))} · ${areaTxt(Math.max(...s.items.map(i=>i.cells||0)))}</small></span></button>`).join("")
+          :dwdFailed?`<div class="dk-empty">DWD-Warnungen gerade nicht abrufbar.</div>`:`<div class="dk-empty">✓ Aktuell keine amtlichen Warnungen.</div>`)+
         `<div class="dk-sec"><span>Brennpunkte · bis ${fmtH(hours.length-1)}</span></div>`+
         (hs.length?hs.map(s=>`<button class="dk-row" data-sel="${s.id}" data-go="${s.first}">${sq(s.max)}<span class="dk-rt"><b>${esc(s.name)}</b><small>${[...s.hz].sort().map(c=>ICON[c]+" "+HAZ[c]).join(" · ")}</small></span><span class="dk-when-s">${LVNAME[s.max]}<br><small>${fmtH(s.first)}</small></span></button>`).join("")
           :`<div class="dk-empty">🌤 Keine Gefahren in Sicht — ruhige Lage in ganz Deutschland.</div>`)+
@@ -362,8 +373,9 @@
       ${!dwdReady?`<div class="dk-empty">Lädt…</div>`
         :act.length?act.map(a=>`<div class="dk-alert sev-${esc(a.sev||"minor")}${dwdNow.includes(a)?" on":""}">
             <div><b>${esc(cap(a.event))}</b> <span class="dk-pill">${SEV_LABEL[a.sev]||"Warnung"}</span></div>
-            <small>${a.onset?"ab "+fmtT(a.onset):""}${a.expires?" bis "+fmtT(a.expires)+" Uhr":""}</small></div>`).join("")
-        :`<div class="dk-empty">✓ Keine amtliche Warnung.</div>`}
+            <small>${a.onset?"ab "+fmtT(a.onset):""}${a.expires?" bis "+fmtT(a.expires)+" Uhr":""}${a.cells?` · ${areaTxt(a.cells)}`:""}</small>
+            ${a.instr?`<details class="dk-instr"><summary>Was tun?</summary>${esc(a.instr)}</details>`:""}</div>`).join("")
+        :dwdFailed?`<div class="dk-empty">DWD-Warnungen gerade nicht abrufbar.</div>`:`<div class="dk-empty">✓ Keine amtliche Warnung.</div>`}
       <div class="dk-sec"><span>Vorhersage · stündlich</span></div>
       <div class="dk-cells">${cells.join("")}</div>
       <div class="dk-cells-ax"><span>jetzt</span><span>${fmtH(n-1)}</span></div>
@@ -433,6 +445,6 @@
     if(!g) return "";
     const d=new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(g)?g:g+"Z");
     if(isNaN(d.getTime())) return "";
-    return `Modell-Raster ~0,4° · Stand ${WD[d.getDay()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())} Uhr · DWD-Warnungen je Landeshauptstadt`;
+    return `Modell-Raster ~0,4° · Stand ${WD[d.getDay()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())} Uhr · DWD-Warnungen aller Warngebiete`;
   }
 })();

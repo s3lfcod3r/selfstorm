@@ -105,3 +105,5 @@
 .dk-cells-ax{display:flex;justify-content:space-between;font-size:.66rem;color:var(--self-text-2);margin-top:4px}
 .dk-verdict{font-size:.84rem;margin:10px 0 0;line-height:1.5}
 .dk-foot{margin-top:12px;font-size:.7rem;color:var(--self-text-3);text-align:center}
+.dk-instr{margin-top:4px;font-size:.76rem;color:var(--self-text-2);white-space:pre-line}
+.dk-instr summary{cursor:pointer;color:var(--self-teal);font-weight:600;white-space:normal}
