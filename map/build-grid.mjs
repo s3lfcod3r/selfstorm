@@ -1,5 +1,5 @@
 // SelfStorm Karten-Vorrechner: legt ein Raster über Deutschland, holt für jeden
-// Rasterpunkt die 48h-Vorhersage von Open-Meteo (bulk) und schreibt map/grid.json.
+// Rasterpunkt die ~72h-Vorhersage von Open-Meteo (bulk) und schreibt map/grid.json.
 // Läuft als GitHub Action (alle paar Stunden). Damit lädt die Karte nur eine fertige
 // Datei — schnell und schonend für die kostenlosen API-Limits.
 
@@ -7,9 +7,13 @@ import fs from "node:fs/promises";
 import H from "../hazards.js";
 
 const FC = "https://api.open-meteo.com/v1/forecast";
-const STEP = 0.4;          // Rasterweite in Grad (~28–44 km)
+const STEP = 0.2;          // Rasterweite in Grad (~14–22 km)
+// Open-Meteo (frei) zählt jeden Punkt als Abruf: ~1.150 Punkte × 4 Läufe/Tag ≈ 4.600 von 10.000/Tag.
+// Feinere Details lädt die Karte beim Hineinzoomen im Browser nach (map/dekarte.js).
 const FORECAST_DAYS = 3;   // ~72 Stunden (deckt auch übermorgen ab)
 const BATCH = 100;         // Koordinaten pro API-Aufruf
+const PAUSE_MS = 7000;     // Pause zwischen Batches (Limit 600 Abrufe/Minute)
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const geo = JSON.parse(await fs.readFile(new URL("./germany.geojson", import.meta.url), "utf8"));
 const multi = geo.features[0].geometry.coordinates; // MultiPolygon
@@ -56,7 +60,9 @@ for (let b = 0; b < grid.length; b += BATCH) {
     timezone: "UTC",
     forecast_days: String(FORECAST_DAYS)
   });
-  const r = await fetch(`${FC}?${p}`);
+  if (b) await sleep(PAUSE_MS);
+  let r = await fetch(FC, { method: "POST", body: p });
+  if (r.status === 429) { await sleep(65000); r = await fetch(FC, { method: "POST", body: p }); }
   if (!r.ok) throw new Error("Open-Meteo HTTP " + r.status + " bei Batch " + b);
   const data = await r.json();
   const arr = Array.isArray(data) ? data : [data];
@@ -77,8 +83,9 @@ const out = {
   generated: new Date().toISOString(),       // Zeitpunkt der Berechnung (ISO, UTC)
   bbox: { minLat: +minLat.toFixed(3), maxLat: +maxLat.toFixed(3), minLon: +minLon.toFixed(3), maxLon: +maxLon.toFixed(3) },
   step: STEP,
-  hours,                                       // 48 UTC-Zeitstempel
-  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: g.lv || [], hz: g.hz || [] }))
+  hours,                                       // ~72 UTC-Zeitstempel
+  // lv/hz kompakt als Ziffernfolge: ein Zeichen pro Stunde
+  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: (g.lv || []).join(""), hz: (g.hz || []).join("") }))
 };
 await fs.writeFile(new URL("./grid.json", import.meta.url), JSON.stringify(out));
 console.log(`grid.json geschrieben: ${out.points.length} Punkte × ${hours ? hours.length : 0} Stunden`);
