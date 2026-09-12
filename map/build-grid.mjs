@@ -49,6 +49,22 @@ console.log(`Rasterpunkte in Deutschland: ${grid.length}`);
 // --- Gefahren-Level + Art pro Stunde: gemeinsame Heuristik aus ../hazards.js ---
 // Kategorien: 1 Gewitter/Hagel, 2 Sturm, 3 Starkregen, 4 Hitze, 5 Frost/Glätte, 6 Schnee, 7 Nebel
 
+// --- Wetter je Stunde als Ziffer (für die Gemeinde-Ansicht) ---
+// 0 sonnig · 1 teils bewölkt · 2 bewölkt · 3 Nebel · 4 Niesel · 5 Regen · 6 Schnee · 7 Gewitter · 8 klar (Nacht) · 9 teils bewölkt (Nacht)
+function wxGroup(code, day) {
+  if (code == null) return 2;
+  if (code >= 95) return 7;
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 6;
+  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return 5;
+  if (code >= 51 && code <= 57) return 4;
+  if (code === 45 || code === 48) return 3;
+  if (code === 3) return 2;
+  if (code === 2) return day ? 1 : 9;
+  return day ? 0 : 8;
+}
+// Temperatur kompakt: zwei Base36-Zeichen, Versatz +50 °C ("1c" = -2 °C)
+const tempCode = t => (Math.max(-50, Math.min(1245, Math.round(t == null ? 0 : t))) + 50).toString(36).padStart(2, "0");
+
 // --- Open-Meteo im Batch abfragen ---
 let hours = null;
 for (let b = 0; b < grid.length; b += BATCH) {
@@ -56,7 +72,7 @@ for (let b = 0; b < grid.length; b += BATCH) {
   const p = new URLSearchParams({
     latitude: chunk.map(g => g.lat).join(","),
     longitude: chunk.map(g => g.lon).join(","),
-    hourly: "cape,weather_code,wind_gusts_10m,precipitation,temperature_2m,snowfall,visibility",
+    hourly: "cape,weather_code,wind_gusts_10m,precipitation,temperature_2m,snowfall,visibility,is_day",
     timezone: "UTC",
     forecast_days: String(FORECAST_DAYS)
   });
@@ -69,10 +85,12 @@ for (let b = 0; b < grid.length; b += BATCH) {
   arr.forEach((res, i) => {
     const h = res.hourly;
     if (!hours) hours = h.time;
-    const g = chunk[i]; g.lv = []; g.hz = [];
+    const g = chunk[i]; g.lv = []; g.hz = []; g.wx = []; g.t = [];
     for (let k = 0; k < h.time.length; k++) {
       const r = H.hourHazard(h, k);
       g.lv.push(r.lv); g.hz.push(r.cat);
+      g.wx.push(wxGroup(h.weather_code[k], h.is_day ? h.is_day[k] : 1));
+      g.t.push(tempCode(h.temperature_2m[k]));
     }
   });
   console.log(`Batch ${b / BATCH + 1}: ${arr.length} Punkte`);
@@ -85,7 +103,7 @@ const out = {
   step: STEP,
   hours,                                       // ~72 UTC-Zeitstempel
   // lv/hz kompakt als Ziffernfolge: ein Zeichen pro Stunde
-  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: (g.lv || []).join(""), hz: (g.hz || []).join("") }))
+  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: (g.lv || []).join(""), hz: (g.hz || []).join(""), wx: (g.wx || []).join(""), t: (g.t || []).join("") }))
 };
 await fs.writeFile(new URL("./grid.json", import.meta.url), JSON.stringify(out));
 console.log(`grid.json geschrieben: ${out.points.length} Punkte × ${hours ? hours.length : 0} Stunden`);

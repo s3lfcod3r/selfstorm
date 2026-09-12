@@ -1,20 +1,23 @@
-/* SelfStorm Deutschland-Karte — eine zoombare Karte für alles (Haupt- und Extra-Seite).
-   Erwartet im DOM: <section id="dekarte" data-link="karte.html"></section>, map/dekarte.css,
-   map/vendor/leaflet (Leaflet 1.9) und hazards.js.
-   Ebenen: Kartenbild (OpenStreetMap, per CSS abgedunkelt), Modell-Vorhersage aller Gefahren als Glüh-Flächen
-   (map/grid.json 0,2° für Deutschland; beim Hineinzoomen Feinraster 0,1° live von Open-Meteo, weltweit),
-   amtliche DWD-Warnflächen gemeindegenau (DWD-GeoServer, Ersatz: Bright Sky je Bundesland), eigene Orte.
-   Bundesländer sind anklickbar; die Zeitleiste zeigt, wann wo etwas los ist. */
+/* SelfStorm Deutschland-Karte — eine Karte für alles (Haupt- und Extra-Seite).
+   Erwartet im DOM: <section id="dekarte" data-link="karte.html"></section> + map/dekarte.css.
+   Ebenen: Modell-Vorhersage aller Gefahren (map/grid.json, ~72h) als Glüh-Flächen,
+   amtliche DWD-Warnflächen gemeindegenau (DWD-GeoServer, Ersatz: Bright Sky je Bundesland),
+   Städte, eigene Orte. Bundesländer sind anklickbar und werden herangezoomt — dann mit allen
+   Gemeinden (map/gemeinden/DE-XX.json), eingefärbt nach Wetter/Gefahr der gewählten Stunde;
+   die Zeitleiste zeigt, wann wo etwas los ist. */
 (function(){
   "use strict";
   const root=document.getElementById("dekarte"); if(!root) return;
-  if(!window.L){ root.textContent="Karte konnte nicht geladen werden."; return; }
 
   const WD=["So","Mo","Di","Mi","Do","Fr","Sa"];
   const COL={2:"#f4c534",3:"#f5892f",4:"#e5484d"};
   const LVNAME=["ruhig","ruhig","Beobachten","Warnung","Unwetter"];
   const HAZ={1:"Gewitter/Hagel",2:"Sturm",3:"Starkregen",4:"Hitze",5:"Frost/Glätte",6:"Schnee",7:"Nebel"};
   const ICON={1:"⛈",2:"🌬",3:"💧",4:"🌡",5:"🧊",6:"❄",7:"🌫"};
+  // Wetter je Stunde (grid.json "wx"): Symbol, Name, Flächenfarbe in der Gemeinde-Ansicht
+  const WX=[["☀️","sonnig","rgba(244,197,52,.17)"],["⛅","teils bewölkt","rgba(244,197,52,.08)"],["☁️","bewölkt","rgba(157,189,208,.13)"],
+    ["🌫","Nebel","rgba(210,220,230,.22)"],["🌦","Nieselregen","rgba(74,144,217,.17)"],["🌧","Regen","rgba(74,144,217,.32)"],
+    ["🌨","Schnee","rgba(225,238,255,.3)"],["⛈","Gewitter","rgba(168,85,247,.36)"],["🌙","klar","rgba(120,140,210,.07)"],["☁️","teils bewölkt","rgba(157,189,208,.09)"]];
   const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
   // Landeshauptstadt je Bundesland (Zuordnung von Raster-Randpunkten)
@@ -22,20 +25,29 @@
     "DE-HB":[53.08,8.80],"DE-HH":[53.55,9.99],"DE-HE":[50.08,8.24],"DE-MV":[53.63,11.42],
     "DE-NI":[52.37,9.73],"DE-NW":[51.23,6.78],"DE-RP":[50.00,8.27],"DE-SL":[49.24,6.99],
     "DE-SN":[51.05,13.74],"DE-ST":[52.13,11.63],"DE-SH":[54.32,10.14],"DE-TH":[50.98,11.03]};
+  // [Name, lon, lat, Stufe] — 1 immer, 0 ab mittlerer Breite, 2 nur herangezoomt
+  const CITIES=[["Berlin",13.40,52.52,1],["Hamburg",9.99,53.55,1],["München",11.58,48.14,1],["Köln",6.96,50.94,1],
+    ["Frankfurt",8.68,50.11,1],["Stuttgart",9.18,48.78,1],["Hannover",9.73,52.37,0],["Dresden",13.74,51.05,0],
+    ["Nürnberg",11.08,49.45,0],["Bremen",8.80,53.08,0],["Rostock",12.10,54.09,0],["Erfurt",11.03,50.98,0],
+    ["Kiel",10.14,54.32,2],["Lübeck",10.69,53.87,2],["Flensburg",9.44,54.79,2],["Husum",9.05,54.48,2],["Heide",9.10,54.20,2],
+    ["Cuxhaven",8.69,53.86,2],["Oldenburg",8.21,53.14,2],["Emden",7.21,53.37,2],["Osnabrück",8.05,52.28,2],["Braunschweig",10.52,52.27,2],
+    ["Göttingen",9.93,51.54,2],["Lüneburg",10.41,53.25,2],["Schwerin",11.42,53.63,2],["Greifswald",13.38,54.10,2],["Stralsund",13.09,54.31,2],
+    ["Neubrandenburg",13.26,53.56,2],["Potsdam",13.06,52.40,2],["Cottbus",14.33,51.76,2],["Frankfurt (Oder)",14.55,52.35,2],
+    ["Magdeburg",11.63,52.13,2],["Halle",11.97,51.48,2],["Leipzig",12.37,51.34,2],["Chemnitz",12.92,50.83,2],["Görlitz",14.99,51.15,2],
+    ["Jena",11.59,50.93,2],["Gera",12.08,50.88,2],["Suhl",10.69,50.61,2],["Düsseldorf",6.78,51.23,2],["Dortmund",7.47,51.51,2],
+    ["Münster",7.63,51.96,2],["Bielefeld",8.53,52.02,2],["Aachen",6.08,50.78,2],["Siegen",8.02,50.87,2],["Kassel",9.48,51.31,2],
+    ["Fulda",9.68,50.55,2],["Wiesbaden",8.24,50.08,2],["Darmstadt",8.65,49.87,2],["Mainz",8.27,50.00,2],["Koblenz",7.59,50.36,2],
+    ["Trier",6.64,49.75,2],["Kaiserslautern",7.77,49.44,2],["Saarbrücken",6.99,49.24,2],["Mannheim",8.47,49.49,2],["Karlsruhe",8.40,49.01,2],
+    ["Freiburg",7.85,47.99,2],["Konstanz",9.18,47.66,2],["Ulm",9.99,48.40,2],["Heilbronn",9.22,49.14,2],["Würzburg",9.95,49.79,2],
+    ["Bamberg",10.89,49.89,2],["Hof",11.92,50.31,2],["Regensburg",12.10,49.01,2],["Passau",13.43,48.57,2],["Ingolstadt",11.43,48.77,2],
+    ["Augsburg",10.90,48.37,2],["Kempten",10.31,47.73,2],["Rosenheim",12.13,47.86,2],["Garmisch-P.",11.10,47.49,2]];
+  const WFS="https://maps.dwd.de/geoserver/dwd/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&typeName=dwd:";
   // Amtlicher Landesschlüssel → ISO-Kürzel
   const LAND={"01":"DE-SH","02":"DE-HH","03":"DE-NI","04":"DE-HB","05":"DE-NW","06":"DE-HE","07":"DE-RP","08":"DE-BW",
     "09":"DE-BY","10":"DE-SL","11":"DE-BE","12":"DE-BB","13":"DE-MV","14":"DE-SN","15":"DE-ST","16":"DE-TH"};
-  const WFS="https://maps.dwd.de/geoserver/dwd/ows?service=WFS&version=2.0.0&request=GetFeature&outputFormat=application/json&typeName=dwd:";
-  const FC="https://api.open-meteo.com/v1/forecast";
-  const HOURLY="cape,weather_code,wind_gusts_10m,precipitation,temperature_2m,snowfall,visibility";
-  // Feinraster: 1°-Kacheln mit 0,1°-Punkten (100 Abrufe je Kachel, zählen aufs Kontingent des Besuchers)
-  // Open-Meteo frei: 600 Abrufe/Minute → höchstens 4 Kacheln je Ansicht, nacheinander
-  const FINE={step:0.1, n:10, minZoom:8, maxBlocks:4, ttl:3600e3, key:"selfstorm.fine.v1", keep:36};
-  const TILE="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
   const LOC_KEY="selfstorm.locations.v1";
   const SPEEDS=[1,2,4], STEP_MS=520;
   const DPR=Math.max(1,Math.min(2,window.devicePixelRatio||1));
-  const EMBED=!!root.dataset.link;
 
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const cap=s=>String(s||"").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g,(m,a,b)=>a+b.toUpperCase());
@@ -48,21 +60,19 @@
     <div class="dk-top">
       <div>
         <h2>Deutschland-Karte</h2>
-        <div class="dk-sub">Vorhersage aller Gefahren · amtliche DWD-Warnungen · zoombar bis auf Ortsebene</div>
+        <div class="dk-sub">Vorhersage aller Gefahren · amtliche DWD-Warnungen · Bundesland antippen</div>
       </div>
-      ${EMBED?`<a class="dk-link" href="${esc(root.dataset.link)}">groß ansehen →</a>`:""}
+      ${root.dataset.link?`<a class="dk-link" href="${esc(root.dataset.link)}">groß ansehen →</a>`:""}
     </div>
     <div class="dk-body">
       <div class="dk-left">
         <div class="dk-stage">
-          <div class="dk-map" data-map></div>
+          <canvas></canvas>
           <div class="dk-hud">
             <div class="dk-when"><span data-when>—</span><span class="dk-badge" data-badge></span></div>
             <div class="dk-sum" data-sum></div>
-            <div class="dk-fine" data-fine hidden></div>
           </div>
           <button class="dk-zoomout" data-zoomout hidden>← ganz Deutschland</button>
-          <div class="dk-wheelhint" data-wheelhint hidden>${EMBED?"Zum Zoomen <b>Strg</b> + Mausrad – oder in die Karte klicken":""}</div>
           <div class="dk-tip" hidden></div>
           <div class="dk-loading" data-loading>Lade Karte…</div>
         </div>
@@ -91,18 +101,16 @@
     <div class="dk-foot" data-gen></div>`;
 
   const $=s=>root.querySelector(s);
-  const stage=$(".dk-stage"), mapEl=$("[data-map]"), tip=$(".dk-tip");
-  let map=null, cv=null, ctx=null;
+  const stage=$(".dk-stage"), cv=$("canvas"), ctx=cv.getContext("2d"), tip=$(".dk-tip");
   const base=document.createElement("canvas"), bctx=base.getContext("2d");
-  const heat=document.createElement("canvas"), hctx=heat.getContext("2d");   // Vorhersage erst deckend, dann halbtransparent auflegen
 
-  let grid=null, states=null, outline=null, hours=[], hourMs=[], deBounds=null;
+  let grid=null, states=null, outline=null, hours=[], hourMs=[];
   let ptState=[], stMax={}, stHz={}, hourMax=[], hourScore=[];
-  let kx=1, W=0, H=0, T={s:1,ox:0,oy:0}, homeZoom=5.5;
+  let B,V,kx,scale,ox,oy,W=0,H=0,cellR=10,fullScale=1,anim=null;
   let idx=0, nowIdx=0, hover=null, selected=null, hoverPt=null;
+  const gem={}; let selGem=null, hoverGem=null;   // Gemeinden je Bundesland (nachgeladen)
   let playing=false, timer=null, speed=1, dirty=true;
   let dwd={}, warns=[], dwdReady=false, dwdFailed=false, dwdSrc="";
-  const fine=new Map(), finePending=new Set(); let fineBlockedUntil=0, fineErr=false;
 
   Promise.all([
     fetch("map/grid.json").then(r=>r.json()),
@@ -110,21 +118,20 @@
     fetch("map/germany.geojson").then(r=>r.json())
   ]).then(([g,bl,de])=>{
     grid=g; states=bl.features; outline=de.features[0].geometry.coordinates;
-    // Raster kompakt (Ziffernfolge) oder als Array
-    const arr=v=>typeof v==="string"?Array.from(v,Number):v;
-    grid.points.forEach(p=>{ p.lv=arr(p.lv); p.hz=arr(p.hz); });
+    // Raster kompakt: Ziffernfolgen (lv, hz, wx) und Temperatur als Base36-Paare (+50 °C)
+    const digits=v=>typeof v==="string"?Array.from(v,Number):v;
+    g.points.forEach(p=>{ p.lv=digits(p.lv); p.hz=digits(p.hz); if(p.wx!=null) p.wx=digits(p.wx);
+      if(typeof p.t==="string"){ const a=[]; for(let i=0;i<p.t.length;i+=2) a.push(parseInt(p.t.substr(i,2),36)-50); p.t=a; } });
     hours=g.hours; hourMs=hours.map(h=>new Date(h+"Z").getTime());
-    const B=g.bbox; kx=Math.cos(((B.minLat+B.maxLat)/2)*Math.PI/180);
-    deBounds=L.latLngBounds([B.minLat,B.minLon],[B.maxLat,B.maxLon]);
+    B=g.bbox; V={...B}; kx=Math.cos(((B.minLat+B.maxLat)/2)*Math.PI/180);
     prepare();
     nowIdx=idx=calcNowIdx();
     $("[data-loading]").hidden=true;
     $("[data-gen]").textContent=fmtGenerated(g.generated);
-    loadFineCache();
-    initMap(); buildStrip(); wire(); renderSide(); update();
+    buildStrip(); resize(); wire(); renderSide(); update();
     requestAnimationFrame(frame);
     loadDwd(); setInterval(loadDwd,10*60e3);
-  }).catch(e=>{ console.error(e); $("[data-loading]").textContent="Karte konnte nicht geladen werden."; });
+  }).catch(()=>{ $("[data-loading]").textContent="Karte konnte nicht geladen werden."; });
 
   // ---------- Daten vorbereiten ----------
   function prepare(){
@@ -176,11 +183,13 @@
       const p=f.properties||{}; if(!f.geometry) return;
       let w=by.get(key(p));
       if(!w){ w={event:p.EVENT||"Warnung",sev:String(p.SEVERITY||"minor").toLowerCase(),onset:p.ONSET,expires:p.EXPIRES,
-        instr:p.INSTRUCTION||"",parts:[],places:{}}; by.set(key(p),w); }
+        instr:p.INSTRUCTION||"",parts:[],places:{},cells:new Set()}; by.set(key(p),w); }
       w.parts.push({g:f.geometry,b:bboxOf(f.geometry)});
     });
     if(names) (names.features||[]).forEach(f=>{
-      const p=f.properties||{}, w=by.get(key(p)), sid=cellState(p.WARNCELLID); if(!w||!sid) return;
+      const p=f.properties||{}, w=by.get(key(p)); if(!w) return;
+      w.cells.add(String(p.WARNCELLID));
+      const sid=cellState(p.WARNCELLID); if(!sid) return;
       (w.places[sid]=w.places[sid]||[]).push(cleanName(p.NAME));
     });
     const d=emptyDwd(), list=[...by.values()];
@@ -197,202 +206,149 @@
     return {dwd:d,warns:list};
   }
   async function loadBrightsky(){
-    const j=await fetch("https://api.brightsky.dev/alerts?tz=Europe/Berlin").then(okJson), d=emptyDwd();
+    const j=await fetch("https://api.brightsky.dev/alerts?tz=Europe/Berlin").then(okJson), d=emptyDwd(), list=[];
     (j.alerts||[]).forEach(x=>{
       const cells={};
+      list.push({event:x.event_de||x.event_en||"Warnung",sev:x.severity,onset:x.onset,expires:x.expires,instr:x.instruction_de||"",
+        parts:[],cells:new Set((x.warn_cell_ids||[]).map(String))});
       (x.warn_cell_ids||[]).forEach(c=>{ const id=cellState(c); if(id) cells[id]=(cells[id]||0)+1; });
       for(const id in cells) if(d[id]) d[id].push({event:x.event_de||x.event_en||"Warnung",sev:x.severity,onset:x.onset,expires:x.expires,
         instr:x.instruction_de||"",names:[],cells:cells[id],unit:"Warngebiet"});
     });
-    return {dwd:d,warns:[]};
+    return {dwd:d,warns:list};
   }
   const isActive=(a,t)=>{ const on=a.onset?Date.parse(a.onset):-Infinity, ex=a.expires?Date.parse(a.expires):Infinity; return on<t+3600e3&&ex>t; };
   function dwdActive(id,t){
     return (dwd[id]||[]).filter(a=>isActive(a,t));
   }
   const dwdLevel=(id,t)=>dwdActive(id,t).reduce((m,a)=>Math.max(m,SEVLV[a.sev]||2),0);
+  const gemWarns=(m,t)=>warns.filter(w=>w.cells&&w.cells.has(m.cell)&&(t==null||isActive(w,t)));
 
-  // ---------- Karte (Leaflet) ----------
-  function initMap(){
-    map=L.map(mapEl,{zoomControl:false,minZoom:3,maxZoom:13,zoomSnap:0.25,zoomDelta:0.5,wheelPxPerZoomLevel:90,
-      worldCopyJump:true,scrollWheelZoom:!EMBED,dragging:!(EMBED&&L.Browser.mobile),tap:false});
-    L.control.zoom({position:"bottomright",zoomInTitle:"Hineinzoomen",zoomOutTitle:"Herauszoomen"}).addTo(map);
-    map.attributionControl.setPrefix(false);
-    L.tileLayer(TILE,{maxZoom:19,className:"dk-tiles",
-      attribution:'© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>-Mitwirkende · Wetter: Open-Meteo · Warnungen: DWD'}).addTo(map);
-    map.createPane("dk").style.zIndex=450;
-    map.getPane("dk").style.pointerEvents="none";
-    cv=L.DomUtil.create("canvas","dk-canvas",map.getPane("dk")); ctx=cv.getContext("2d");
-    map.setView(deBounds.getCenter(),5.5,{animate:false});   // Startansicht auch bei eingeklappter Übersicht
-
-    resize();
-    map.on("move zoom viewreset",()=>{ dirty=true; });
-    map.on("zoomanim",()=>stage.classList.add("dk-zooming"));
-    map.on("zoomend",()=>{ stage.classList.remove("dk-zooming"); dirty=true; });
-    let ft; map.on("moveend",()=>{ updateZoomUi(); clearTimeout(ft); ft=setTimeout(ensureFine,250); });
-
-    // Eingebettet: Mausrad nur mit Strg oder nach Klick in die Karte (Seite bleibt scrollbar)
-    if(EMBED){
-      const hint=$("[data-wheelhint]"); let ht;
-      map.on("click",()=>map.scrollWheelZoom.enable());
-      mapEl.addEventListener("mouseleave",()=>map.scrollWheelZoom.disable());
-      mapEl.addEventListener("wheel",e=>{
-        if(map.scrollWheelZoom.enabled()) return;
-        if(e.ctrlKey||e.metaKey){ e.preventDefault(); map.setZoomAround(map.mouseEventToContainerPoint(e),map.getZoom()+(e.deltaY<0?.5:-.5)); return; }
-        hint.hidden=false; clearTimeout(ht); ht=setTimeout(()=>hint.hidden=true,1400);
-      },{passive:false});
-    }
-    if(window.ResizeObserver) new ResizeObserver(()=>resize()).observe(stage);
-    else window.addEventListener("resize",()=>resize());
+  // ---------- Gemeinden ----------
+  async function loadGemeinden(id){
+    if(gem[id]) return gem[id];
+    gem[id]={loading:true,list:[]};
+    try{
+      const j=await fetch(`map/gemeinden/${id}.json`).then(okJson);
+      gem[id]={list:j.g.map(([cell,name,ki,rings])=>{
+        const rs=rings.map(fl=>{ const pts=[]; let x=fl[0], y=fl[1]; pts.push([x/1e4,y/1e4]);
+          for(let i=2;i<fl.length;i+=2){ x+=fl[i]; y+=fl[i+1]; pts.push([x/1e4,y/1e4]); } return pts; });
+        const b=[180,90,-180,-90]; let big=rs[0];
+        rs.forEach(r=>{ if(r.length>big.length) big=r; r.forEach(q=>{ if(q[0]<b[0])b[0]=q[0]; if(q[1]<b[1])b[1]=q[1]; if(q[0]>b[2])b[2]=q[0]; if(q[1]>b[3])b[3]=q[1]; }); });
+        let cx=0, cy=0; big.forEach(q=>{ cx+=q[0]; cy+=q[1]; }); cx/=big.length; cy/=big.length;
+        let gp=0, bd=1e9; grid.points.forEach((q,i)=>{ const d=(q.lat-cy)**2+((q.lon-cx)*kx)**2; if(d<bd){ bd=d; gp=i; } });
+        return {cell:String(cell),name,kreis:j.k[ki]||"",rings:rs,b,c:[cx,cy],gp};
+      })};
+    }catch(e){ gem[id]={failed:true,list:[]}; }
+    if(selected===id){ dirty=true; renderSide(); }
+    return gem[id];
   }
-  let fitted=false;
+  const gemReady=()=>selected&&gem[selected]&&gem[selected].list.length?gem[selected]:null;
+  function gemAt(lon,lat){
+    const g=gemReady(); if(!g) return null;
+    return g.list.find(m=>lon>=m.b[0]&&lon<=m.b[2]&&lat>=m.b[1]&&lat<=m.b[3]&&m.rings.reduce((n,r)=>n+(inRing(lon,lat,r)?1:0),0)%2===1)||null;
+  }
+  function ringPath(c,r){ r.forEach((q,i)=>{ const v=px(q[0],q[1]); i?c.lineTo(v[0],v[1]):c.moveTo(v[0],v[1]); }); c.closePath(); }
+  // Wetter/Gefahr einer Gemeinde zur Stunde h (aus dem nächsten Rasterpunkt)
+  function gemState(m,h){
+    const p=grid.points[m.gp];
+    return {lv:p.lv[h], hz:p.hz[h], wx:p.wx?p.wx[h]:-1, t:p.t?p.t[h]:null};
+  }
+
+  // ---------- Geometrie ----------
   function resize(){
-    const w=stage.clientWidth; if(!w||!map) return;
-    const B=grid.bbox, ratio=(B.maxLat-B.minLat)/((B.maxLon-B.minLon)*kx);
-    const h=Math.round(Math.min(w*ratio, Math.max(380, window.innerHeight*0.74)));
-    if(fitted&&w===W&&h===H) return;
-    W=w; H=h; mapEl.style.height=H+"px";
-    [cv,base,heat].forEach(c=>{ c.width=Math.round(W*DPR); c.height=Math.round(H*DPR); c.style&&(c.style.width=W+"px",c.style.height=H+"px"); });
-    map.invalidateSize(false);
-    homeZoom=map.getBoundsZoom(deBounds,false,L.point(20,20));
-    if(!fitted){ map.fitBounds(deBounds,{padding:[10,10],animate:false}); fitted=true; }
-    dirty=true; updateZoomUi();
+    const w=stage.clientWidth; if(!w||!grid) return;
+    const gw=(B.maxLon-B.minLon)*kx, gh=(B.maxLat-B.minLat), ratio=gh/gw;
+    W=w; H=Math.round(Math.min(W*ratio, Math.max(380, window.innerHeight*0.74)));
+    cv.style.height=H+"px";
+    [cv,base].forEach(c=>{ c.width=Math.round(W*DPR); c.height=Math.round(H*DPR); });
+    fullScale=Math.min((W-28)/gw,(H-28)/gh);
+    if(anim){ V={...anim.to}; anim=null; }
+    setProj();
   }
-  function home(){ map.flyToBounds(deBounds,{padding:[10,10],duration:.6}); }
-  function updateZoomUi(){
-    if(!map) return;
-    $("[data-zoomout]").hidden=!(selected||map.getZoom()>homeZoom+.6||!map.getBounds().intersects(deBounds));
-    const z=map.getZoom(), el=$("[data-fine]");
-    if(z>=FINE.minZoom){
-      el.hidden=false;
-      el.innerHTML=Date.now()<fineBlockedUntil?"⏳ Feinraster-Limit erreicht – später erneut"
-        :finePending.size?`<span class="spin-s"></span> Feinraster 0,1° lädt…`
-        :fineErr?"Feinraster gerade nicht abrufbar":"🔍 Feinraster 0,1° (~8 km)";
-    } else if(z>=6.5){ el.hidden=false; el.textContent="Tipp: weiter hineinzoomen für Feinraster"; }
-    else el.hidden=true;
+  function setProj(){
+    const gw=(V.maxLon-V.minLon)*kx, gh=(V.maxLat-V.minLat), pad=14;
+    scale=Math.min((W-2*pad)/gw,(H-2*pad)/gh); ox=(W-gw*scale)/2; oy=(H-gh*scale)/2;
+    cellR=grid.step*scale*1.15; dirty=true;
   }
-
-  // Web-Mercator: Pixel pro Frame einmal umrechnen, dann schnell für alle Punkte
-  function syncTransform(){
-    const s=256*Math.pow(2,map.getZoom()), o=map.getPixelOrigin(), pp=map._getMapPanePos?map._getMapPanePos():L.point(0,0);
-    T={s, ox:o.x-pp.x, oy:o.y-pp.y};
+  // Ausschnitt weich auf ein Bundesland (oder ganz Deutschland) fahren
+  function zoomTo(id){
+    const f=id&&stateById(id);
+    zoomBox(f?bboxOf(f.geometry):null);
+    $("[data-zoomout]").hidden=!f;
+    $("[data-zoomout]").textContent="← ganz Deutschland";
   }
-  const merc=(lon,lat)=>{ const r=Math.max(-85.05,Math.min(85.05,lat))*Math.PI/180; return [(lon+180)/360,(1-Math.log(Math.tan(Math.PI/4+r/2))/Math.PI)/2]; };
-  const px=(lon,lat)=>{ const m=merc(lon,lat); return [m[0]*T.s-T.ox, m[1]*T.s-T.oy]; };
-  const degPx=(lat,step)=>Math.abs(px(10,lat)[1]-px(10,lat+step)[1]);
-  function addRings(c,geom){ polys(geom).forEach(poly=>{ poly[0].forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]); }); c.closePath(); }); }
+  function zoomBox(b){
+    let to={...B};
+    if(b){ const cx=(b[0]+b[2])/2, cy=(b[1]+b[3])/2, hw=Math.max((b[2]-b[0])/2,.22), hh=Math.max((b[3]-b[1])/2,.14);
+      const padLon=hw*.24+.08, padLat=hh*.24+.06;
+      to={minLon:cx-hw-padLon,maxLon:cx+hw+padLon,minLat:cy-hh-padLat,maxLat:cy+hh+padLat}; }
+    anim={from:{...V},to,start:performance.now()};
+  }
+  const zoomLevel=()=>scale/fullScale;
+  const px=(lon,lat)=>[ox+(lon-V.minLon)*kx*scale, oy+(V.maxLat-lat)*scale];
+  const unpx=(x,y)=>[V.minLon+(x-ox)/(scale*kx), V.maxLat-(y-oy)/scale];
   function addAllRings(c,geom){ polys(geom).forEach(poly=>poly.forEach(ring=>{ ring.forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]); }); c.closePath(); })); }
-  function traceOutline(c){ c.beginPath(); outline.forEach(poly=>{ poly[0].forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]); }); c.closePath(); }); }
-  function stateById(id){ return states.find(f=>f.properties.id===id); }
   const hatchCache={};
   function hatch(c,col){
     if(!hatchCache[col]){ const h=document.createElement("canvas"); h.width=h.height=8; const x=h.getContext("2d");
-      x.strokeStyle=hexA(col,.5); x.lineWidth=1.4; x.beginPath(); x.moveTo(-2,10); x.lineTo(10,-2); x.moveTo(6,10); x.lineTo(10,6); x.moveTo(-2,2); x.lineTo(2,-2); x.stroke();
+      x.strokeStyle=hexA(col,.45); x.lineWidth=1.4; x.beginPath(); x.moveTo(-2,10); x.lineTo(10,-2); x.moveTo(6,10); x.lineTo(10,6); x.moveTo(-2,2); x.lineTo(2,-2); x.stroke();
       hatchCache[col]=h; }
     return c.createPattern(hatchCache[col],"repeat");
   }
-  function myLocations(){ try{ return JSON.parse(localStorage.getItem(LOC_KEY))||[]; }catch(e){ return []; } }
+  function addRings(c,geom){ polys(geom).forEach(poly=>{ poly[0].forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]); }); c.closePath(); }); }
+  function traceOutline(c){ c.beginPath(); outline.forEach(poly=>{ poly[0].forEach((pt,i)=>{ const q=px(pt[0],pt[1]); i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]); }); c.closePath(); }); }
+  function stateById(id){ return states.find(f=>f.properties.id===id); }
 
-  // ---------- Feinraster (live, beim Hineinzoomen) ----------
-  const blockKey=(la,lo)=>la+":"+lo;
-  function loadFineCache(){
-    try{ const c=JSON.parse(localStorage.getItem(FINE.key)||"{}");
-      for(const k in c){ const b=c[k]; if(Date.now()-b.t<FINE.ttl){ b.lv=b.lv.map(s=>Array.from(s,Number)); b.hz=b.hz.map(s=>Array.from(s,Number)); fine.set(k,b); } }
-    }catch(e){}
-  }
-  function saveFineCache(){
-    try{ const all=[...fine.entries()].sort((a,b)=>b[1].t-a[1].t).slice(0,FINE.keep), o={};
-      all.forEach(([k,b])=>{ o[k]={la:b.la,lo:b.lo,t:b.t,t0:b.t0,lv:b.lv.map(a=>a.join("")),hz:b.hz.map(a=>a.join(""))}; });
-      localStorage.setItem(FINE.key,JSON.stringify(o)); }catch(e){}
-  }
-  function ensureFine(){
-    updateZoomUi();
-    if(!map||map.getZoom()<FINE.minZoom||Date.now()<fineBlockedUntil) return;
-    const b=map.getBounds(), c=map.getCenter(), list=[];
-    for(let la=Math.floor(b.getSouth());la<=Math.floor(b.getNorth());la++){
-      if(la<-80||la>79) continue;
-      for(let lo=Math.floor(b.getWest());lo<=Math.floor(b.getEast());lo++){
-        const L0=((lo+180)%360+360)%360-180;
-        list.push([la,L0,(la+.5-c.lat)**2+((lo+.5-c.lng)*Math.cos(c.lat*Math.PI/180))**2]);
-      }
-    }
-    fineQueue=list.sort((a,b)=>a[2]-b[2]).slice(0,FINE.maxBlocks).filter(([la,lo])=>!fine.has(blockKey(la,lo)));
-    pumpFine(); updateZoomUi();
-  }
-  let fineQueue=[], fineBusy=false;
-  async function pumpFine(){
-    if(fineBusy) return; fineBusy=true;
-    while(fineQueue.length&&Date.now()>=fineBlockedUntil){
-      const [la,lo]=fineQueue.shift(); if(fine.has(blockKey(la,lo))) continue;
-      await fetchBlock(la,lo);
-    }
-    fineBusy=false;
-  }
-  async function fetchBlock(la,lo){
-    const k=blockKey(la,lo), lats=[], lons=[];
-    finePending.add(k);
-    for(let i=0;i<FINE.n;i++) for(let j=0;j<FINE.n;j++){ lats.push((la+(i+.5)*FINE.step).toFixed(3)); lons.push((lo+(j+.5)*FINE.step).toFixed(3)); }
-    try{
-      const body=new URLSearchParams({latitude:lats.join(","),longitude:lons.join(","),hourly:HOURLY,timezone:"UTC",forecast_days:"3"});
-      const r=await fetch(FC,{method:"POST",body});
-      if(r.status===429){ fineBlockedUntil=Date.now()+90e3; setTimeout(ensureFine,91e3); throw 0; }
-      if(!r.ok) throw 0;
-      const j=await r.json(), arr=Array.isArray(j)?j:[j], H=window.SelfStormHazards;
-      const blk={la,lo,t:Date.now(),t0:Date.parse(arr[0].hourly.time[0]+"Z"),lv:[],hz:[]};
-      arr.forEach(res=>{ const h=res.hourly, lv=[], hz=[];
-        for(let q=0;q<h.time.length;q++){ const x=H.hourHazard(h,q); lv.push(x.lv||0); hz.push(x.cat||0); }
-        blk.lv.push(lv); blk.hz.push(hz); });
-      fine.set(k,blk); fineErr=false; saveFineCache(); dirty=true;
-    }catch(e){ fineErr=true; }
-    finally{ finePending.delete(k); updateZoomUi(); }
-  }
-  // Feinwert an einer Stelle (oder null, wenn dort kein Feinraster geladen ist)
-  function fineAt(lon,lat,t){
-    const b=fine.get(blockKey(Math.floor(lat),Math.floor(lon))); if(!b) return null;
-    const i=Math.min(FINE.n-1,Math.floor((lat-b.la)/FINE.step)), j=Math.min(FINE.n-1,Math.floor((lon-b.lo)/FINE.step)), h=Math.round((t-b.t0)/3600e3), q=i*FINE.n+j;
-    if(h<0||h>=b.lv[q].length) return {lv:0,hz:0,lat:b.la+(i+.5)*FINE.step,lon:b.lo+(j+.5)*FINE.step};
-    return {lv:b.lv[q][h],hz:b.hz[q][h],lat:b.la+(i+.5)*FINE.step,lon:b.lo+(j+.5)*FINE.step};
-  }
+  function myLocations(){ try{ return (JSON.parse(localStorage.getItem(LOC_KEY))||[]).filter(l=>l.lat>=B.minLat&&l.lat<=B.maxLat&&l.lon>=B.minLon&&l.lon<=B.maxLon); }catch(e){ return []; } }
 
-  // ---------- Zeichnen: statische Ebene (bei Bewegung/Änderung neu) ----------
-  function blob(c,q,r,lv){
-    const col=COL[lv], g=c.createRadialGradient(q[0],q[1],0,q[0],q[1],r);
-    g.addColorStop(0,hexA(col,1)); g.addColorStop(.55,hexA(col,.85)); g.addColorStop(1,hexA(col,0));
-    c.fillStyle=g; c.beginPath(); c.arc(q[0],q[1],r,0,6.2832); c.fill();
-  }
-  const onScreen=(q,m)=>q[0]>-m&&q[1]>-m&&q[0]<W+m&&q[1]<H+m;
+  // ---------- Zeichnen: statische Ebene (nur bei Änderung) ----------
   function renderBase(){
     const c=bctx; c.setTransform(DPR,0,0,DPR,0,0); c.clearRect(0,0,W,H);
-    const t=hourMs[idx], z=map.getZoom(), useFine=z>=FINE.minZoom&&fine.size;
+    const t=hourMs[idx];
+
+    // Landfläche mit sanftem Leuchten
+    traceOutline(c);
+    c.save(); c.shadowColor="rgba(51,167,140,.28)"; c.shadowBlur=28; c.fillStyle="#111821"; c.fill(); c.restore();
+    const lg=c.createLinearGradient(0,0,0,H); lg.addColorStop(0,"rgba(67,211,173,.05)"); lg.addColorStop(1,"rgba(29,184,212,.02)");
+    c.fillStyle=lg; c.fill();
 
     // Hover/Auswahl; im Ersatzbetrieb (ohne Warnflächen) ganzes Bundesland einfärben
     states.forEach(f=>{
       const id=f.properties.id, lv=dwdReady&&dwdSrc==="bs"?dwdLevel(id,t):0;
-      if(lv<2&&(z>=8||id!==hover&&id!==selected)) return;
+      if(lv<2&&id!==hover&&id!==selected) return;
       c.beginPath(); addRings(c,f.geometry);
-      c.fillStyle=lv>=2?hexA(COL[lv],.17):(id===selected?"rgba(67,211,173,.06)":"rgba(157,189,208,.06)");
+      c.fillStyle=lv>=2?hexA(COL[lv],.17):(id===selected?"rgba(67,211,173,.07)":"rgba(157,189,208,.06)");
       c.fill();
     });
 
-    // Vorhersage: grobes Raster (wo kein Feinraster da ist), darüber Feinraster.
-    // Auf eigener Ebene deckend malen (Überlappungen addieren sich nicht), dann transparent auflegen.
-    const hc=hctx; hc.setTransform(DPR,0,0,DPR,0,0); hc.clearRect(0,0,W,H);
-    const rC=degPx(51,grid.step)*.85, rF=degPx(51,FINE.step)*.95;
+    // Vorhersage als Glüh-Flächen, auf Deutschland zugeschnitten (im gewählten Land übernehmen die Gemeinden)
+    const gm=gemReady(), selF=selected&&stateById(selected);
+    c.save(); traceOutline(c); c.clip();
+    if(gm){ c.beginPath(); c.rect(0,0,W,H); addRings(c,selF.geometry); c.clip("evenodd"); }
     for(const pass of [2,3,4]){
       grid.points.forEach(p=>{
         if(p.lv[idx]!==pass) return;
-        if(useFine&&fine.has(blockKey(Math.floor(p.lat),Math.floor(p.lon)))) return;
-        const q=px(p.lon,p.lat); if(onScreen(q,rC)) blob(hc,q,rC*(pass>=3?1.12:1),pass);
-      });
-      if(useFine) fine.forEach(b=>{
-        const h=Math.round((t-b.t0)/3600e3); if(h<0) return;
-        for(let i=0;i<FINE.n;i++) for(let j=0;j<FINE.n;j++){
-          const q0=i*FINE.n+j, lv=b.lv[q0][h]; if(lv!==pass) continue;
-          const q=px(b.lo+(j+.5)*FINE.step,b.la+(i+.5)*FINE.step); if(onScreen(q,rF)) blob(hc,q,rF*(pass>=3?1.1:1),pass);
-        }
+        const q=px(p.lon,p.lat), r=cellR*(pass>=3?1.12:1), col=COL[pass];
+        const g=c.createRadialGradient(q[0],q[1],0,q[0],q[1],r);
+        g.addColorStop(0,hexA(col,pass>=3?.85:.7)); g.addColorStop(.5,hexA(col,pass>=3?.45:.32)); g.addColorStop(1,hexA(col,0));
+        c.fillStyle=g; c.beginPath(); c.arc(q[0],q[1],r,0,6.2832); c.fill();
       });
     }
-    c.save(); c.setTransform(1,0,0,1,0,0); c.globalAlpha=z>=FINE.minZoom?.5:.62; c.drawImage(heat,0,0); c.restore();
+    c.restore();
+
+    // Gemeinden: Farbe nach Gefahr (Warnfarben) oder Wetter (Sonne gelblich, Regen blau, Gewitter lila …)
+    if(gm){
+      gm.list.forEach(m=>{
+        const st=gemState(m,idx);
+        c.beginPath(); m.rings.forEach(r=>ringPath(c,r));
+        c.fillStyle=st.lv>=2?hexA(COL[st.lv],st.lv>=3?.52:.4):(st.wx>=0?WX[st.wx][2]:"rgba(157,189,208,.05)");
+        c.fill("evenodd");
+        if(dwdSrc==="bs"&&gemWarns(m,t).length){ c.fillStyle=hatch(c,COL[gemWarns(m,t).reduce((x,a)=>Math.max(x,SEVLV[a.sev]||2),0)]); c.fill("evenodd"); }
+      });
+      c.beginPath(); gm.list.forEach(m=>m.rings.forEach(r=>ringPath(c,r)));
+      c.strokeStyle="rgba(157,189,208,.2)"; c.lineWidth=.5; c.stroke();
+    }
 
     // Amtliche Warnflächen (gemeindegenau), schwächere zuerst
     if(dwdReady) warns.filter(w=>isActive(w,t)).sort((a,b)=>(SEVLV[a.sev]||2)-(SEVLV[b.sev]||2)).forEach(w=>{
@@ -400,28 +356,59 @@
       c.beginPath(); w.parts.forEach(p=>addAllRings(c,p.g));
       c.fillStyle=hexA(col,.2); c.fill("evenodd");
       c.fillStyle=hatch(c,col); c.fill("evenodd");
-      c.strokeStyle=hexA(col,.95); c.lineWidth=z>=9?1.6:1.2; c.stroke();
+      c.strokeStyle=hexA(col,.95); c.lineWidth=1.2; c.stroke();
     });
 
     // Grenzen
-    // Umrisse sind vereinfacht: bei starkem Zoom nur noch dezent
-    const close=z>=8;
     c.lineJoin="round";
-    if(!close){ c.beginPath(); states.forEach(f=>addRings(c,f.geometry)); c.strokeStyle="rgba(157,189,208,.22)"; c.lineWidth=.8; c.stroke(); }
+    c.beginPath(); states.forEach(f=>addRings(c,f.geometry));
+    c.strokeStyle="rgba(157,189,208,.17)"; c.lineWidth=.8; c.stroke();
     if(dwdReady&&dwdSrc==="bs") states.forEach(f=>{
       const lv=dwdLevel(f.properties.id,t); if(lv<2) return;
       c.beginPath(); addRings(c,f.geometry); c.setLineDash([5,3]); c.strokeStyle=hexA(COL[lv],.85); c.lineWidth=1.4; c.stroke(); c.setLineDash([]);
     });
-    if(!close){ traceOutline(c); c.save(); c.shadowColor="rgba(51,167,140,.55)"; c.shadowBlur=10; c.strokeStyle="rgba(157,189,208,.55)"; c.lineWidth=1.3; c.stroke(); c.restore(); }
+    traceOutline(c); c.strokeStyle="rgba(157,189,208,.5)"; c.lineWidth=1.3; c.stroke();
 
-    // Auswahl: Umgebung abdunkeln, Land hervorheben
-    if(selected&&!close){ const f=stateById(selected); c.beginPath(); c.rect(0,0,W,H); addRings(c,f.geometry); c.fillStyle="rgba(8,12,17,.45)"; c.fill("evenodd"); }
+    // Herangezoomt: Umgebung abdunkeln, gewähltes Land hervorheben
+    // (Beim Landkreis-Zoom passen die vereinfachten Landesumrisse nicht zu den Gemeindegrenzen → dort Gemeinden abdunkeln)
+    const kreisView=gm&&selGem;
+    if(selected&&!kreisView){ const f=stateById(selected); c.beginPath(); c.rect(0,0,W,H); addRings(c,f.geometry); c.fillStyle="rgba(8,12,17,.5)"; c.fill("evenodd"); }
+    if(kreisView){ c.beginPath(); gm.list.forEach(m=>{ if(m.kreis!==selGem.kreis) m.rings.forEach(r=>ringPath(c,r)); }); c.fillStyle="rgba(8,12,17,.45)"; c.fill("evenodd"); }
     [hover,selected].forEach(id=>{
-      if(!id) return; const f=stateById(id); if(!f) return;
+      if(!id||(kreisView&&id===selected)) return; const f=stateById(id); if(!f) return;
       c.beginPath(); addRings(c,f.geometry);
-      if(close){ if(id===selected){ c.setLineDash([6,5]); c.strokeStyle="rgba(67,211,173,.5)"; c.lineWidth=1.2; c.stroke(); c.setLineDash([]); } }
-      else if(id===selected){ c.save(); c.shadowColor="rgba(67,211,173,.8)"; c.shadowBlur=12; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
+      if(id===selected){ c.save(); c.shadowColor="rgba(67,211,173,.8)"; c.shadowBlur=12; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
       else { c.strokeStyle="rgba(238,244,247,.55)"; c.lineWidth=1.4; c.stroke(); }
+    });
+    if(gm){
+      if(selGem){ c.beginPath(); selGem.rings.forEach(r=>ringPath(c,r)); c.save(); c.shadowColor="rgba(67,211,173,.9)"; c.shadowBlur=10; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
+      if(hoverGem&&hoverGem!==selGem){ c.beginPath(); hoverGem.rings.forEach(r=>ringPath(c,r)); c.strokeStyle="rgba(238,244,247,.85)"; c.lineWidth=1.4; c.stroke(); }
+      // Wettersymbole: Gefahren zuerst, dann große Gemeinden; ohne Überlappung
+      const sz=W<420?12:14, taken=[];
+      c.font=`${sz}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; c.textAlign="center"; c.textBaseline="middle";
+      gm.list.map(m=>({m,st:gemState(m,idx),a:(m.b[2]-m.b[0])*(m.b[3]-m.b[1])}))
+        .sort((x,y)=>(y.st.lv>=2)-(x.st.lv>=2)||y.st.lv-x.st.lv||y.a-x.a)
+        .forEach(({m,st})=>{
+          if(st.lv<2&&st.wx<0) return;
+          const q=px(m.c[0],m.c[1]); if(q[0]<8||q[1]<8||q[0]>W-8||q[1]>H-8) return;
+          const gap=sz*1.35; if(taken.some(o=>Math.abs(o[0]-q[0])<gap&&Math.abs(o[1]-q[1])<gap)) return;
+          taken.push(q); c.fillText(st.lv>=2?(ICON[st.hz]||"⚠"):WX[st.wx][0],q[0],q[1]);
+        });
+      c.textAlign="left";
+    }
+
+    // Städte (mehr Namen, je näher herangezoomt; ohne Überlappung)
+    const small=W<420, z=zoomLevel(), boxes=[];
+    if(gm&&z>=2.6){ dirty=false; return; }   // stark herangezoomt: Gemeinde-Symbole statt Städtenamen
+    c.font=`500 ${small?10:11}px "Exo 2", system-ui, sans-serif`; c.textBaseline="middle";
+    CITIES.forEach(([name,lon,lat,tier])=>{
+      if(tier===2&&z<1.6) return; if(tier===0&&small&&z<1.6) return;
+      const q=px(lon,lat); if(q[0]<0||q[1]<0||q[0]>W||q[1]>H) return;
+      const bw=c.measureText(name).width, bx=[q[0]-3,q[1]-7,q[0]+8+bw,q[1]+7];
+      if(boxes.some(o=>bx[0]<o[2]&&bx[2]>o[0]&&bx[1]<o[3]&&bx[3]>o[1])) return; boxes.push(bx);
+      c.fillStyle="rgba(188,217,233,.75)"; c.beginPath(); c.arc(q[0],q[1],tier===1?2.4:1.8,0,6.2832); c.fill();
+      c.lineWidth=3; c.strokeStyle="rgba(8,12,17,.75)"; c.strokeText(name,q[0]+6,q[1]);
+      c.fillStyle=tier===2?"rgba(188,217,233,.5)":"rgba(188,217,233,.62)"; c.fillText(name,q[0]+6,q[1]);
     });
     dirty=false;
   }
@@ -430,36 +417,37 @@
   let lastFrame=0;
   function frame(ts){
     requestAnimationFrame(frame);
-    if(!W||!map||!fitted||root.offsetParent===null||ts-lastFrame<33) return;
+    if(!W||root.offsetParent===null||ts-lastFrame<33) return;
     lastFrame=ts;
-    syncTransform();
-    L.DomUtil.setPosition(cv,map.containerPointToLayerPoint([0,0]));
+    if(anim){ const k=Math.min(1,(performance.now()-anim.start)/550), e=1-Math.pow(1-k,3);
+      for(const key in V) V[key]=anim.from[key]+(anim.to[key]-anim.from[key])*e;
+      setProj(); if(k>=1) anim=null; }
     if(dirty) renderBase();
     ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(base,0,0);
     ctx.setTransform(DPR,0,0,DPR,0,0);
 
-    // Brennpunkte pulsieren (grobes Raster)
-    const rC=degPx(51,grid.step);
+    // Brennpunkte pulsieren
     grid.points.forEach((p,i)=>{
       const lv=p.lv[idx]; if(lv<3) return;
-      const q=px(p.lon,p.lat); if(!onScreen(q,rC)) return;
-      const ph=((ts/1600)+(i%7)/7)%1;
-      ctx.beginPath(); ctx.arc(q[0],q[1],rC*(.25+ph*.75),0,6.2832);
-      ctx.strokeStyle=hexA(COL[lv],(1-ph)*.5); ctx.lineWidth=1.5; ctx.stroke();
+      const ph=((ts/1600)+(i%7)/7)%1, q=px(p.lon,p.lat);
+      ctx.beginPath(); ctx.arc(q[0],q[1],cellR*(.25+ph*.75),0,6.2832);
+      ctx.strokeStyle=hexA(COL[lv],(1-ph)*.55); ctx.lineWidth=1.5; ctx.stroke();
     });
 
-    if(hoverPt){ const q=px(hoverPt[0],hoverPt[1]); ctx.beginPath(); ctx.arc(q[0],q[1],4,0,6.2832); ctx.fillStyle="rgba(238,244,247,.9)"; ctx.fill(); }
+    // Gewählter Hover-Punkt
+    if(hoverPt){ ctx.beginPath(); ctx.arc(hoverPt[0],hoverPt[1],4,0,6.2832); ctx.fillStyle="rgba(238,244,247,.9)"; ctx.fill(); }
 
     // Eigene Orte als Pins
+    const locs=myLocations();
     ctx.font='600 11px "Exo 2", system-ui, sans-serif'; ctx.textBaseline="middle";
-    myLocations().forEach(l=>{
-      const q=px(l.lon,l.lat); if(!onScreen(q,40)) return;
-      const ph=(ts/2000)%1, name=String(l.name||"").slice(0,22), tw=ctx.measureText(name).width;
+    locs.forEach(l=>{
+      const q=px(l.lon,l.lat), ph=(ts/2000)%1;
       ctx.beginPath(); ctx.arc(q[0],q[1],5+ph*10,0,6.2832); ctx.strokeStyle=`rgba(67,211,173,${(1-ph)*.6})`; ctx.lineWidth=1.5; ctx.stroke();
       ctx.beginPath(); ctx.arc(q[0],q[1],4.5,0,6.2832); ctx.fillStyle="#43d3ad"; ctx.fill();
       ctx.lineWidth=1.6; ctx.strokeStyle="#080c11"; ctx.stroke();
-      ctx.lineWidth=3; ctx.strokeStyle="rgba(8,12,17,.85)"; ctx.strokeText(name,q[0]-tw-9,q[1]);
-      ctx.fillStyle="#bff5e6"; ctx.fillText(name,q[0]-tw-9,q[1]);
+      const name=String(l.name||"").slice(0,22);
+      ctx.lineWidth=3; ctx.strokeStyle="rgba(8,12,17,.85)"; ctx.strokeText(name,q[0]-ctx.measureText(name).width-9,q[1]);
+      ctx.fillStyle="#bff5e6"; ctx.fillText(name,q[0]-ctx.measureText(name).width-9,q[1]);
     });
   }
 
@@ -528,7 +516,8 @@
 
   function renderSide(){
     const side=$("[data-side]"); if(!grid) return;
-    if(selected){ side.innerHTML=selectedHtml(selected); }
+    if(selected&&selGem){ side.innerHTML=gemHtml(selGem); }
+    else if(selected){ side.innerHTML=selectedHtml(selected); }
     else {
       const now=hourMs[nowIdx];
       const off=dwdReady?states.map(f=>({id:f.properties.id,name:f.properties.name,items:dwdActive(f.properties.id,now)})).filter(s=>s.items.length)
@@ -547,6 +536,62 @@
     side.querySelectorAll("[data-sel]").forEach(b=>b.onclick=()=>{ pause(); select(b.dataset.sel); if(b.dataset.go!=null) setIdx(+b.dataset.go); });
     side.querySelectorAll("[data-go]:not([data-sel])").forEach(b=>b.onclick=()=>{ pause(); setIdx(+b.dataset.go); });
     const x=side.querySelector("[data-close]"); if(x) x.onclick=()=>select(null);
+    const xb=side.querySelector("[data-gemclose]"); if(xb) xb.onclick=()=>selectGem(null);
+    side.querySelectorAll("[data-gem]").forEach(b=>b.onclick=()=>{ const g=gemReady(); if(g) selectGem(g.list[+b.dataset.gem]); });
+  }
+  function gemSummaryHtml(){
+    const g=selected&&gem[selected];
+    if(!g||g.loading) return `<div class="dk-sec"><span>Gemeinden</span></div><div class="dk-empty">Gemeinden laden…</div>`;
+    if(g.failed||!g.list.length) return "";
+    const t=hourMs[idx], cnt={}, lvc=[0,0,0,0,0], hits=[];
+    g.list.forEach((m,i)=>{ const st=gemState(m,idx); lvc[st.lv]++;
+      if(st.wx>=0){ const k=WX[st.wx][0]; cnt[k]=(cnt[k]||0)+1; }
+      const off=dwdReady?gemWarns(m,t):[];
+      if(st.lv>=2||off.length) hits.push({i,m,st,off,lvx:Math.max(st.lv,off.reduce((x,a)=>Math.max(x,SEVLV[a.sev]||2),0))}); });
+    const n=g.list.length, danger=lvc[2]+lvc[3]+lvc[4];
+    const wxs=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="dk-wx">${k} ${Math.round(v/n*100)} %</span>`).join("");
+    hits.sort((a,b)=>b.lvx-a.lvx||b.off.length-a.off.length||a.m.name.localeCompare(b.m.name,"de"));
+    return `<div class="dk-sec"><span>${n} Gemeinden · ${fmtH(idx)}</span></div>
+      ${wxs?`<div class="dk-wxrow">${wxs}</div>`:""}
+      <div class="dk-gemcount">${danger?`⚠ <b>${danger}</b> mit Gefahr${lvc[3]+lvc[4]?` (davon <b style="color:${COL[3]}">${lvc[3]+lvc[4]}</b> Warnung)`:""}`:"🌤 keine Gemeinde mit Gefahr"}</div>
+      ${hits.slice(0,6).map(h=>`<button class="dk-row" data-gem="${h.i}">${sq(h.lvx)}<span class="dk-rt"><b>${esc(h.m.name)}</b><small>${esc(h.m.kreis)} · ${h.st.lv>=2?ICON[h.st.hz]+" "+HAZ[h.st.hz]:""}${h.off.length?`${h.st.lv>=2?" · ":""}⚠ ${esc(cap(h.off[0].event))}`:""}</small></span></button>`).join("")}
+      ${hits.length>6?`<div class="dk-hint" style="margin-top:4px;border:0;padding:0">+ ${hits.length-6} weitere — Gemeinde auf der Karte antippen</div>`:""}`;
+  }
+  function gemHtml(m){
+    const n=hours.length, t=hourMs[idx], st=gemState(m,idx), p=grid.points[m.gp];
+    const all=dwdReady?gemWarns(m,null):[], now=all.filter(a=>isActive(a,t));
+    let max=0, first=-1, cnt=0; const hz=new Set();
+    for(let h=nowIdx;h<n;h++){ if(p.lv[h]>=2){ cnt++; hz.add(p.hz[h]); if(first<0) first=h; max=Math.max(max,p.lv[h]); } }
+    const cells=[]; for(let h=nowIdx;h<n;h++){
+      const d=new Date(hourMs[h]), w=p.wx?p.wx[h]:-1;
+      const bg=p.lv[h]>=2?COL[p.lv[h]]:(w>=0?WX[w][2].replace(/[\d.]+\)$/,".75)"):"rgba(157,189,208,.12)");
+      cells.push(`<button data-go="${h}" class="${h===idx?"cur":""}${d.getHours()===0?" day":""}" style="background:${bg}" title="${fmtH(h)} · ${w>=0?WX[w][1]:""}${p.t?" · "+p.t[h]+"°":""}${p.lv[h]>=2?" · "+LVNAME[p.lv[h]]+" "+HAZ[p.hz[h]]:""}"></button>`);
+    }
+    // Wetter der nächsten Stunden in 3-Std-Schritten
+    const steps=[]; for(let h=idx;h<Math.min(n,idx+24);h+=3){ const w=p.wx?p.wx[h]:-1; steps.push(`<div class="dk-hr"><small>${pad2(new Date(hourMs[h]).getHours())}</small><span>${p.lv[h]>=2?ICON[p.hz[h]]:(w>=0?WX[w][0]:"–")}</span><b>${p.t?p.t[h]+"°":""}</b></div>`); }
+    return `<div class="dk-selhead">
+        <div><div class="dk-selname">${esc(m.name)}</div><div class="dk-selnow">${esc(m.kreis)} · ${esc(stateById(selected).properties.name)}</div></div>
+        <button class="dk-x" data-gemclose aria-label="Zurück zum Bundesland">✕</button>
+      </div>
+      <div class="dk-gemnow">
+        <span class="dk-gemicon">${st.lv>=2?ICON[st.hz]:(st.wx>=0?WX[st.wx][0]:"🌤")}</span>
+        <div><b>${st.t!=null?st.t+"°":""} ${st.wx>=0?WX[st.wx][1]:""}</b><br><small>${fmtH(idx)} Uhr${st.lv>=2?` · <span style="color:${COL[st.lv]}">${LVNAME[st.lv]}: ${HAZ[st.hz]}</span>`:" · keine Gefahr"}</small></div>
+      </div>
+      <div class="dk-hours">${steps.join("")}</div>
+      <div class="dk-sec"><span>Amtlich (DWD) · diese Gemeinde</span><span class="dk-live">● live</span></div>
+      ${!dwdReady?`<div class="dk-empty">Lädt…</div>`
+        :all.length?all.map(a=>`<div class="dk-alert sev-${esc(a.sev||"minor")}${now.includes(a)?" on":""}">
+            <div><b>${esc(cap(a.event))}</b> <span class="dk-pill">${SEV_LABEL[a.sev]||"Warnung"}</span></div>
+            <small>${a.onset?"ab "+fmtT(a.onset):""}${a.expires?" bis "+fmtT(a.expires)+" Uhr":""}</small>
+            ${a.instr?`<details class="dk-instr"><summary>Was tun?</summary>${esc(a.instr)}</details>`:""}</div>`).join("")
+        :dwdFailed?`<div class="dk-empty">DWD-Warnungen gerade nicht abrufbar.</div>`:`<div class="dk-empty">✓ Keine amtliche Warnung für ${esc(m.name)}.</div>`}
+      <div class="dk-sec"><span>Vorhersage · stündlich</span></div>
+      <div class="dk-cells">${cells.join("")}</div>
+      <div class="dk-cells-ax"><span>jetzt</span><span>${fmtH(n-1)}</span></div>
+      <p class="dk-verdict">${max>=2
+        ?`Höchste Stufe <b style="color:${COL[max]}">${LVNAME[max]}</b> — ${[...hz].sort().map(c=>ICON[c]+" "+HAZ[c]).join(", ")}. Erstmals ${fmtH(first)} Uhr, insgesamt ${cnt} Std betroffen.`
+        :"Die Wettermodelle sehen hier bis zum Ende der Vorhersage keine Gefahr. 🌤"}</p>
+      <div class="dk-hint">Vorhersage aus dem Modellraster (~20 km) · Warnungen gemeindegenau vom DWD.</div>`;
   }
   function selectedHtml(id){
     const f=stateById(id), n=hours.length, m=stMax[id], t=hourMs[idx];
@@ -564,6 +609,7 @@
         <div class="dk-selnow">${sq(curLv)} ${fmtH(idx)}: <b>${LVNAME[curLv]}</b>${curHz.length?" · "+curHz.map(c=>ICON[c]+" "+HAZ[c]).join(", "):""}</div></div>
         <button class="dk-x" data-close aria-label="Auswahl schließen">✕</button>
       </div>
+      ${gemSummaryHtml()}
       <div class="dk-sec"><span>Amtlich (DWD)</span><span class="dk-live">● live</span></div>
       ${!dwdReady?`<div class="dk-empty">Lädt…</div>`
         :act.length?act.map(a=>`<div class="dk-alert sev-${esc(a.sev||"minor")}${dwdNow.includes(a)?" on":""}">
@@ -578,12 +624,21 @@
       <p class="dk-verdict">${max>=2
         ?`Höchste Stufe <b style="color:${COL[max]}">${LVNAME[max]}</b> — ${[...hz].sort().map(c=>ICON[c]+" "+HAZ[c]).join(", ")}. Erstmals ${fmtH(first)} Uhr, insgesamt ${cnt} Std betroffen.`
         :"Die Wettermodelle sehen hier bis zum Ende der Vorhersage keine Gefahr. 🌤"}</p>
-      <div class="dk-hint">Kästchen antippen, um zu diesem Zeitpunkt zu springen.</div>`;
+      <div class="dk-hint">Gemeinde auf der Karte antippen für Details · Kästchen antippen springt zur Stunde.</div>`;
   }
-  function select(id,zoom=true){
-    if(id!==selected){ selected=id; hover=null; dirty=true; renderSide(); }
-    if(zoom&&id){ const b=bboxOf(stateById(id).geometry); map.flyToBounds([[b[1],b[0]],[b[3],b[2]]],{padding:[24,24],duration:.6}); }
-    updateZoomUi();
+  function select(id){
+    if(id===selected&&!selGem) return;
+    selected=id; selGem=null; hoverGem=null; hover=null; dirty=true; zoomTo(id); renderSide();
+    if(id) loadGemeinden(id);
+  }
+  function selectGem(m){
+    selGem=m; dirty=true; renderSide();
+    if(!m){ zoomTo(selected); return; }
+    // auf den Landkreis der Gemeinde zoomen
+    const g=gemReady(), b=[180,90,-180,-90];
+    g.list.filter(x=>x.kreis===m.kreis).forEach(x=>{ b[0]=Math.min(b[0],x.b[0]); b[1]=Math.min(b[1],x.b[1]); b[2]=Math.max(b[2],x.b[2]); b[3]=Math.max(b[3],x.b[3]); });
+    zoomBox(b);
+    $("[data-zoomout]").hidden=false; $("[data-zoomout]").textContent="← ganz "+stateById(selected).properties.name;
   }
 
   // ---------- Interaktion ----------
@@ -603,42 +658,62 @@
       else if(k===" "){ playing?pause():play(); e.preventDefault(); }
     });
 
-    $("[data-zoomout]").onclick=()=>{ select(null,false); home(); };
-    const stateAt=ll=>{ const f=states.find(f=>inGeom(ll.lng,ll.lat,f.geometry)); return f?f.properties.id:null; };
-    map.on("mousemove",e=>{
-      const id=stateAt(e.latlng);
-      if(id!==hover){ hover=id; dirty=true; }
-      showTip(id,e.latlng,e.containerPoint);
+    $("[data-zoomout]").onclick=()=>{ if(selGem) selectGem(null); else select(null); };
+    const at=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
+    const stateAt=(x,y)=>{ const [lon,lat]=unpx(x,y); const f=states.find(f=>inGeom(lon,lat,f.geometry)); return f?f.properties.id:null; };
+    cv.addEventListener("pointermove",e=>{
+      if(e.pointerType==="touch") return;
+      const [x,y]=at(e), id=stateAt(x,y), [lon,lat]=unpx(x,y);
+      const m=id&&id===selected?gemAt(lon,lat):null;
+      if(m!==hoverGem){ hoverGem=m; dirty=true; }
+      const hv=m?null:id; if(hv!==hover){ hover=hv; dirty=true; }
+      cv.style.cursor=id?"pointer":"default";
+      if(!id){ tip.hidden=true; hoverPt=null; return; }
+      if(m) showGemTip(m,x,y); else showTip(id,x,y);
     });
-    mapEl.addEventListener("mouseleave",()=>{ if(hover){ hover=null; dirty=true; } tip.hidden=true; hoverPt=null; });
-    map.on("click",e=>{
-      const id=stateAt(e.latlng);
-      if(id) select(id, map.getZoom()<homeZoom+1.2); else if(selected) select(null,false);
-      if(!matchMedia("(hover:hover)").matches) showTip(id,e.latlng,e.containerPoint);
-      if(id&&window.innerWidth<760&&map.getZoom()<homeZoom+1.2) setTimeout(()=>$("[data-side]").scrollIntoView({behavior:"smooth",block:"nearest"}),650);
+    cv.addEventListener("pointerleave",()=>{ if(hover||hoverGem){ hover=null; hoverGem=null; dirty=true; } tip.hidden=true; hoverPt=null; });
+    cv.addEventListener("click",e=>{
+      const [x,y]=at(e), id=stateAt(x,y), [lon,lat]=unpx(x,y);
+      const m=id&&id===selected?gemAt(lon,lat):null;
+      if(m) selectGem(m); else select(id);
+      if(e.pointerType==="touch"||!matchMedia("(hover:hover)").matches){ if(m) showGemTip(m,x,y); else if(id) showTip(id,x,y); else tip.hidden=true; }
+      if(id&&window.innerWidth<760) $("[data-side]").scrollIntoView({behavior:"smooth",block:"nearest"});
     });
+
+    if(window.ResizeObserver) new ResizeObserver(()=>resize()).observe(stage);
+    else window.addEventListener("resize",resize);
+    // Orte auf der Hauptseite können sich ändern — Brennpunkte bleiben, Pins werden je Frame gelesen
   }
-  function showTip(id,ll,cp){
-    const lon=ll.lng, lat=ll.lat, t=hourMs[idx], x=cp.x, y=cp.y;
-    const f=id&&stateById(id);
-    // Vorhersage hier: Feinraster, sonst nächster Punkt des groben Rasters
-    let lv=0, hz=0, src="";
-    const fv=map.getZoom()>=FINE.minZoom?fineAt(lon,lat,t):null;
-    if(fv){ lv=fv.lv; hz=fv.hz; src="fein"; hoverPt=lv>=2?[fv.lon,fv.lat]:null; }
-    else {
-      let best=null,bd=1e9;
-      grid.points.forEach(p=>{ const d=(p.lat-lat)**2+((p.lon-lon)*kx)**2; if(d<bd){bd=d;best=p;} });
-      if(best&&bd<(grid.step*.8)**2){ lv=best.lv[idx]; hz=lv>=2?best.hz[idx]:0; src="grob"; }
-      hoverPt=lv>=2?[best.lon,best.lat]:null;
-    }
-    if(!f&&!src){ tip.hidden=true; return; }
+  function placeTip(x,y){
+    tip.hidden=false;
+    const tw=tip.offsetWidth, th=tip.offsetHeight;
+    tip.style.left=Math.max(6,Math.min(W-tw-6, x+14>W-tw-6?x-tw-14:x+14))+"px";
+    tip.style.top=Math.max(6,Math.min(H-th-6,y-th/2))+"px";
+  }
+  function showGemTip(m,x,y){
+    const st=gemState(m,idx), t=hourMs[idx], p=grid.points[m.gp], off=dwdReady?gemWarns(m,t):[];
+    let next=-1; for(let h=Math.max(idx+1,nowIdx);h<hours.length;h++) if(p.lv[h]>=2){ next=h; break; }
+    hoverPt=null;
+    tip.innerHTML=`<b>${esc(m.name)}</b> <small class="dk-tip-k">${esc(m.kreis)}</small>
+      <div class="dk-tip-wx">${st.wx>=0?WX[st.wx][0]+" "+WX[st.wx][1]:""}${st.t!=null?" · "+st.t+"°":""}</div>
+      ${st.lv>=2?`<div>${sq(st.lv)} ${ICON[st.hz]||""} ${HAZ[st.hz]||"Gefahr"} · ${LVNAME[st.lv]}</div>`:""}
+      ${off.length?`<div class="dk-tip-off">⚠ amtlich: ${esc([...new Set(off.map(a=>cap(a.event)))].slice(0,2).join(", "))}</div>`:""}
+      <div class="dk-tip-src">${st.lv<2?(next>=0?`nächste Gefahr: ${ICON[p.hz[next]]} ${HAZ[p.hz[next]]} ${fmtH(next)}`:"keine Gefahr in Sicht"):""}</div>`;
+    placeTip(x,y);
+  }
+  function showTip(id,x,y){
+    const f=stateById(id), [lon,lat]=unpx(x,y);
+    let best=null,bd=1e9;
+    grid.points.forEach(p=>{ const d=(p.lat-lat)**2+((p.lon-lon)*kx)**2; if(d<bd){bd=d;best=p;} });
+    const lv=best&&bd<(grid.step*.8)**2?best.lv[idx]:0, hz=lv>=2?best.hz[idx]:0;
+    hoverPt=lv>=2?px(best.lon,best.lat):null;
+    const t=hourMs[idx];
     const off=!dwdReady?[]:dwdSrc==="geo"
       ? warns.filter(w=>isActive(w,t)&&w.parts.some(p=>lon>=p.b[0]&&lon<=p.b[2]&&lat>=p.b[1]&&lat<=p.b[3]&&inGeomHoles(lon,lat,p.g)))
-      : (id?dwdActive(id,t):[]);
-    tip.innerHTML=`<b>${f?esc(f.properties.name):"Vorhersage hier"}</b>
+      : dwdActive(id,t);
+    tip.innerHTML=`<b>${esc(f.properties.name)}</b>
       <div>${lv>=2?`${sq(lv)} ${ICON[hz]||""} ${HAZ[hz]||"Gefahr"} · ${LVNAME[lv]}`:"🌤 hier ruhig"}</div>
-      ${off.length?`<div class="dk-tip-off">⚠ amtlich${dwdSrc==="geo"?" hier":""}: ${esc([...new Set(off.map(a=>cap(a.event)))].slice(0,2).join(", "))}</div>`:""}
-      <div class="dk-tip-src">${src==="fein"?"Feinraster ~8 km":"Raster ~20 km"}${f&&!selected&&map.getZoom()<homeZoom+1.2?" · antippen zum Heranzoomen":""}</div>`;
+      ${off.length?`<div class="dk-tip-off">⚠ amtlich${dwdSrc==="geo"?" hier":""}: ${esc([...new Set(off.map(a=>cap(a.event)))].slice(0,2).join(", "))}</div>`:""}`;
     tip.hidden=false;
     const tw=tip.offsetWidth, th=tip.offsetHeight;
     tip.style.left=Math.max(6,Math.min(W-tw-6, x+14>W-tw-6?x-tw-14:x+14))+"px";
@@ -649,6 +724,6 @@
     if(!g) return "";
     const d=new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(g)?g:g+"Z");
     if(isNaN(d.getTime())) return "";
-    return `Modell-Raster ${String(grid.step).replace(".",",")}° (Stand ${WD[d.getDay()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())} Uhr) · beim Hineinzoomen live 0,1° · DWD-Warnflächen gemeindegenau`;
+    return `Modell-Raster ~${String(grid.step).replace(".",",")}° · Stand ${WD[d.getDay()]} ${pad2(d.getHours())}:${pad2(d.getMinutes())} Uhr · DWD-Warnflächen gemeindegenau`;
   }
 })();
