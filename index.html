@@ -158,8 +158,21 @@
   /* Risikoverlauf: Farbverlaufsband ueber 3 Tage (Redesign) */
   .trend{padding:4px 18px 14px}
   .trend-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .trend svg{width:100%;height:64px;display:block}
-  .daymarks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:6px}
+  .trend-box{position:relative;height:64px;touch-action:pan-y;cursor:crosshair}
+  .trend-box svg{width:100%;height:64px;display:block}
+  .trend-box .spk-cur span{top:-20px}
+  .trend-ax{position:relative;height:16px;margin-top:6px;font-size:.7rem;color:var(--muted)}
+  .trend-ax span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+  .outlook{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 14px}
+  .ol-item{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
+  .ol-h{font-size:.72rem;font-weight:700;color:var(--text);display:flex;flex-direction:column;line-height:1.3}
+  .ol-h small{font-weight:400;color:var(--muted);font-size:.66rem}
+  .ol-row{display:flex;align-items:center;gap:8px;margin:5px 0 3px}
+  .ol-score{font-size:1.45rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;min-width:2ch}
+  .ol-bar{flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .ol-bar i{display:block;height:100%;border-radius:999px}
+  .ol-s{font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  @media(max-width:520px){.outlook{gap:6px}.ol-item{padding:8px}.ol-score{font-size:1.15rem}.ol-h small{display:none}.ol-s{white-space:normal}}
 
   /* "Details anzeigen" — Umschalter + zusatzliche Zahlenangaben */
   .det-toggle{
@@ -465,10 +478,11 @@
   const GROUP_NAME={gth:"⛈ Gewitter & Hagel",wind:"🌬 Sturm",rain:"💧 Starkregen",
                     heat:"🌡 Hitze",frost:"🧊 Frost & Glätte",snow:"❄ Schnee",fog:"🌫 Nebel"};
   function analyze(fc){
-    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, peakLabel:"",
-      tags:new Set(), groupLv:new Map(), hourlyRisk:[], maxGust:0, maxCape:0, maxPr1h:0,
-      maxTemp:0, minTemp:Infinity, minVis:Infinity};
-    for(let i=0;i<t.length;i++){
+    // Nur ab der aktuellen Stunde bewerten — Vergangenes zählt nicht mehr
+    const h=fc.hourly, t=h.time, i0=nowIndex(t), out={events:[], peak:0, peakTime:null, peakLabel:"",
+      tags:new Set(), groupLv:new Map(), hourlyRisk:[], hours:[], maxGust:0, maxCape:0, maxPr1h:0,
+      maxTemp:0, minTemp:Infinity, minVis:Infinity, i0};
+    for(let i=i0;i<Math.min(t.length,i0+72);i++){
       const code=h.weather_code[i], cape=num(h.cape[i]), gust=num(h.wind_gusts_10m[i]),
             pr=num(h.precipitation[i]), temp=num(h.temperature_2m&&h.temperature_2m[i]),
             snow=num(h.snowfall&&h.snowfall[i]), vis=num(h.visibility&&h.visibility[i]);
@@ -480,6 +494,10 @@
         vis>0&&vis<1000?(1000-vis)/900:0
       ));
       out.hourlyRisk.push(risk);
+      const top0=hits.length?HAZ.topHazard(hits):null;
+      const lv0=top0?top0.lv:0;
+      out.hours.push({time:t[i], risk, gust, cape, pr, lv:lv0, label:top0?top0.label:"",
+        score:riskScore({peak:lv0,maxGust:gust,maxCape:cape,maxPr1h:pr})});   // gleiche Skala wie Ring und Kacheln
       if(gust>out.maxGust) out.maxGust=gust;
       if(cape>out.maxCape) out.maxCape=cape;
       if(pr>out.maxPr1h) out.maxPr1h=pr;
@@ -498,7 +516,20 @@
     }
     if(!isFinite(out.minTemp)) out.minTemp=0; if(!isFinite(out.minVis)) out.minVis=0;
     out.score=riskScore(out);
+    // Ausblick in 24-Stunden-Fenstern
+    out.windows=[[0,24],[24,48],[48,72]].map(([a,b])=>windowStats(out.hours.slice(a,b),a,b)).filter(Boolean);
     return out;
+  }
+  function windowStats(hs,from,to){
+    if(!hs.length) return null;
+    const w={from,to,start:hs[0].time,end:hs[hs.length-1].time,peak:0,peakTime:null,peakLabel:"",maxGust:0,maxCape:0,maxPr1h:0,maxRisk:0};
+    hs.forEach(x=>{
+      if(x.gust>w.maxGust) w.maxGust=x.gust; if(x.cape>w.maxCape) w.maxCape=x.cape; if(x.pr>w.maxPr1h) w.maxPr1h=x.pr;
+      if(x.risk>w.maxRisk) w.maxRisk=x.risk;
+      if(x.lv>w.peak){ w.peak=x.lv; w.peakTime=x.time; w.peakLabel=x.label; }
+    });
+    w.score=riskScore(w);
+    return w;
   }
   // Risikoscore 0..100 aus echten Werten (Peak-Stufe + Boen + CAPE + Starkregen)
   function riskScore(a){
@@ -565,7 +596,7 @@
         minutely_15:"precipitation",
         current:"temperature_2m,apparent_temperature,relative_humidity_2m,wind_gusts_10m,weather_code",
         daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min,sunrise,sunset",
-        timezone:"auto",forecast_days:"3"});
+        timezone:"auto",forecast_days:"4"});   // 4 Tage, damit ab jetzt volle 72 Std abgedeckt sind
       const [r, dwd]=await Promise.all([ fetch(`${FC}?${p}`), alerts(loc) ]);
       if(!r.ok) throw new Error("HTTP "+r.status);
       const fc=await r.json();
@@ -591,6 +622,7 @@
       +trendHtml(a, fc, loc)+detailsHtml(fc, a)+tilesHtml(fc);
     attachRemove(el,loc);
     el.querySelectorAll("[data-spk]").forEach(wireSpark);
+    el.querySelectorAll("[data-trend]").forEach(wireTrend);
     const tg=el.querySelector("[data-det]");
     if(tg) tg.onclick=()=>{
       const open=tg.getAttribute("aria-pressed")==="true";
@@ -654,37 +686,70 @@
   }
 
   // Risikoverlauf als Farbverlaufsband ueber 3 Tage (statt Tagesraster)
+  // Risiko-Ausblick: drei 24-Stunden-Fenster als Kacheln
+  function outlookHtml(a){
+    if(!a.windows||!a.windows.length) return "";
+    const name=w=>w.from===0?"Nächste 24 Std":`In ${w.from}–${w.to} Std`;
+    const icon=l=>{ const g=HAZ_GROUP[l]; return g?GROUP_NAME[g].split(" ")[0]:"⚠"; };
+    return `<div class="outlook">${a.windows.map(w=>{
+      const col=scoreColor(w.score,w.peak);
+      return `<div class="ol-item">
+        <div class="ol-h">${name(w)}<small>${fmtShort(w.start)} – ${fmtShort(w.end)}</small></div>
+        <div class="ol-row"><span class="ol-score" style="color:${col}">${w.score}</span>
+          <span class="ol-bar"><i style="width:${Math.max(3,w.score)}%;background:${col}"></i></span></div>
+        <div class="ol-s">${w.peak>=2?`${icon(w.peakLabel)} ${escapeHtml(w.peakLabel)} · ab ${fmtShort(w.peakTime)}`:"🌤 ruhig"}</div>
+      </div>`; }).join("")}</div>`;
+  }
+  function fmtShort(t){ if(!t) return ""; const d=new Date(t); return WD[d.getDay()]+" "+t.slice(11,13)+" Uhr"; }
+
+  // Risikoverlauf ab jetzt als Farbverlaufsband, mit 24/48-Std-Marken und Werten beim Drüberfahren
   function trendHtml(a, fc, loc){
-    const h=fc&&fc.hourly; if(!h||!h.time||!a.hourlyRisk.length) return "";
-    const i0=nowIndex(h.time), N=a.hourlyRisk.length-i0, step=Math.max(1,Math.floor(N/96));
-    const pts=[];
-    for(let k=0;k<=N;k+=step){ const i=Math.min(N-1,k); pts.push(a.hourlyRisk[i]); }
-    const W=400,H=64;
-    const X=k=>k/(pts.length-1)*W, Y=v=>H-6-v*(H-16);
-    const line=smoothPath(pts.map((v,k)=>[X(k),Y(v)]));
-    const area=line+` L${X(pts.length-1).toFixed(1)},${H} L0,${H} Z`;
-    // Farbverlauf entlang des Bands: Farbe folgt der Risikohoehe je Tagesdrittel
-    const third=i=>{ const s=Math.floor(pts.length*i/3), e=Math.max(s+1,Math.floor(pts.length*(i+1)/3));
-      let m=0; for(let k=s;k<e;k++) m=Math.max(m,pts[k]); return m; };
-    const col=r=> r<.2?"#3fb56b" : r<.45?"#f4c534" : r<.7?"#f5892f" : "#e5484d";
-    const c0=col(third(0)), c1=col(third(1)), c2=col(third(2)), gm="tg-"+cssId(loc);
-    const peakLbl=a.peakTime?("Spitze: "+fmtWhen(a.peakTime)):(a.peak<=1?"durchgehend ruhig":"");
+    const hs=a.hours; if(!hs||hs.length<3) return "";
+    const n=hs.length, W=400, H=64;
+    const X=k=>k/(n-1)*W, Y=v=>H-6-v*(H-16);
+    const line=smoothPath(hs.map((x,k)=>[X(k),Y(x.score/100)]));
+    const area=line+` L${W},${H} L0,${H} Z`;
+    const col=v=> v<35?"#3fb56b" : v<55?"#f4c534" : v<75?"#f5892f" : "#e5484d";
+    const gm="tg-"+cssId(loc), maxS=Math.max(...hs.map(x=>x.score));
+    // Linienfarbe folgt dem Wert der jeweiligen Stunde
+    const stops=hs.map((x,k)=>`<stop offset="${(k/(n-1)).toFixed(4)}" stop-color="${col(x.score)}"/>`).join("");
+    const peakLbl=a.peakTime?("Spitze: "+fmtWhen(a.peakTime)):"durchgehend ruhig";
+    const marks=[24,48].filter(k=>k<n-1).map(k=>`<line x1="${X(k).toFixed(1)}" y1="0" x2="${X(k).toFixed(1)}" y2="${H}" stroke="rgba(157,189,208,.28)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`).join("");
+    let ax=`<span style="left:0;transform:none">jetzt</span>`;
+    [24,48].forEach(k=>{ if(k<n-4) ax+=`<span style="left:${(k/(n-1)*100).toFixed(2)}%">+${k} Std</span>`; });
+    ax+=`<span style="right:0;left:auto;transform:none">${fmtShort(hs[n-1].time)}</span>`;
+    const data=escapeHtml(JSON.stringify(hs.map(x=>[x.time,x.score,x.lv>=2?x.label:""])));
     return `<div class="trend">
-      <div class="trend-label"><span>Risiko-Verlauf · nächste 3 Tage</span><span>${peakLbl}</span></div>
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="${gm}-a" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stop-color="${c1}" stop-opacity=".3"/><stop offset="1" stop-color="${c1}" stop-opacity="0"/>
-          </linearGradient>
-          <linearGradient id="${gm}" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stop-color="${c0}"/><stop offset=".5" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/>
-          </linearGradient>
-        </defs>
-        <path d="${area}" fill="url(#${gm}-a)"/>
-        <path d="${line}" fill="none" stroke="url(#${gm})" stroke-width="3" stroke-linecap="round"/>
-      </svg>
-      <div class="daymarks"><span>Heute</span><span>Morgen</span><span>Übermorgen</span></div>
+      <div class="trend-label"><span>Risiko-Verlauf · ab jetzt</span><span>${peakLbl}</span></div>
+      ${outlookHtml(a)}
+      <div class="trend-box" data-trend="${data}">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="${gm}-a" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="${col(maxS)}" stop-opacity=".28"/><stop offset="1" stop-color="${col(maxS)}" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="${gm}" x1="0" y1="0" x2="1" y2="0">${stops}</linearGradient>
+          </defs>
+          ${marks}
+          <path d="${area}" fill="url(#${gm}-a)"/>
+          <path d="${line}" fill="none" stroke="url(#${gm})" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <div class="spk-cur" hidden><i></i><span></span></div>
+      </div>
+      <div class="trend-ax">${ax}</div>
     </div>`;
+  }
+  function wireTrend(box){
+    const rows=JSON.parse(box.dataset.trend), n=rows.length, cur=box.querySelector(".spk-cur"), dot=cur.querySelector("i"), lab=cur.querySelector("span");
+    const show=e=>{
+      const r=box.getBoundingClientRect(), k=Math.max(0,Math.min(n-1,Math.round((e.clientX-r.left)/r.width*(n-1)))), row=rows[k];
+      const x=k/(n-1)*100, y=(64-6-row[1]/100*48)/64*100;
+      cur.hidden=false; cur.style.left=x+"%"; dot.style.top=y+"%";
+      lab.innerHTML=`<b>${fmtShort(row[0])}</b> · Risiko ${row[1]}${row[2]?" · "+escapeHtml(row[2]):" · ruhig"}`;
+      lab.style.transform=`translateX(${x>70?"-100%":x<30?"0":"-50%"})`;
+    };
+    box.addEventListener("pointermove",show); box.addEventListener("pointerdown",show);
+    box.addEventListener("pointerleave",()=>{ cur.hidden=true; });
   }
 
   // Zusätzliche genaue Zahlenangaben (nur via "Details anzeigen")
