@@ -93,6 +93,7 @@
           <span><i style="background:${COL[3]}"></i>Warnung</span>
           <span><i style="background:${COL[4]}"></i>Unwetter</span>
           <span><i class="dk-lg-dwd"></i>amtlich (DWD)</span>
+          <span class="dk-lg-wx"><i style="background:rgba(244,197,52,.55)"></i>sonnig <i style="background:rgba(74,144,217,.7)"></i>Regen <i style="background:rgba(168,85,247,.7)"></i>Gewitter</span>
           <span><i class="dk-lg-loc"></i>deine Orte</span>
         </div>
       </div>
@@ -124,7 +125,7 @@
       if(typeof p.t==="string"){ const a=[]; for(let i=0;i<p.t.length;i+=2) a.push(parseInt(p.t.substr(i,2),36)-50); p.t=a; } });
     hours=g.hours; hourMs=hours.map(h=>new Date(h+"Z").getTime());
     B=g.bbox; V={...B}; kx=Math.cos(((B.minLat+B.maxLat)/2)*Math.PI/180);
-    prepare();
+    prepare(); prepareField();
     nowIdx=idx=calcNowIdx();
     $("[data-loading]").hidden=true;
     $("[data-gen]").textContent=fmtGenerated(g.generated);
@@ -302,6 +303,92 @@
 
   function myLocations(){ try{ return (JSON.parse(localStorage.getItem(LOC_KEY))||[]).filter(l=>l.lat>=B.minLat&&l.lat<=B.maxLat&&l.lon>=B.minLon&&l.lon<=B.maxLon); }catch(e){ return []; } }
 
+  // ---------- Vorhersage-Feld: aus Rasterpunkten werden Flächen ----------
+  // Rasterpunkte liegen auf einem Gitter; jede Bildschirmzelle wird weich zwischen den 4 Nachbarpunkten
+  // interpoliert. Gefahren erscheinen als Flächen mit sauberem Rand (Schwellen), das Wetter als zarte Tönung.
+  const FIELD_RES=2;                        // Rechenauflösung in Bildschirmpixeln
+  const fcan=document.createElement("canvas"), fctx=fcan.getContext("2d");
+  const wcan=document.createElement("canvas"), wctx=wcan.getContext("2d");   // Wetter: 1 Pixel je Rasterzelle, weich hochskaliert
+  let F=null;
+  const rgbOf=hex=>{ const n=parseInt(hex.slice(1),16); return [n>>16&255,n>>8&255,n&255]; };
+  const WXRGBA=WX.map(w=>w[2].match(/[\d.]+/g).map(Number));
+  function prepareField(){
+    const st=grid.step, lat0=Math.min(...grid.points.map(p=>p.lat)), lon0=Math.min(...grid.points.map(p=>p.lon));
+    const nx=Math.round((Math.max(...grid.points.map(p=>p.lon))-lon0)/st)+1, ny=Math.round((Math.max(...grid.points.map(p=>p.lat))-lat0)/st)+1;
+    const own=new Int32Array(nx*ny).fill(-1);
+    grid.points.forEach((p,i)=>{ own[Math.round((p.lat-lat0)/st)*nx+Math.round((p.lon-lon0)/st)]=i; });
+    // Zellen knapp außerhalb (Küste/Grenze) übernehmen den nächsten Punkt, damit Flächen am Rand nicht ausbleichen
+    const cell=new Int32Array(nx*ny).fill(-1);
+    for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+      const k=j*nx+i; if(own[k]>=0){ cell[k]=own[k]; continue; }
+      let best=-1, bd=9;
+      for(let dj=-2;dj<=2;dj++) for(let di=-2;di<=2;di++){ const jj=j+dj, ii=i+di; if(jj<0||ii<0||jj>=ny||ii>=nx) continue;
+        const o=own[jj*nx+ii], d=di*di+dj*dj; if(o>=0&&d<bd){ bd=d; best=o; } }
+      cell[k]=best;
+    }
+    F={st,lat0,lon0,nx,ny,cell,lv:new Float32Array(nx*ny),wx:new Float32Array(nx*ny*4),hour:-1};
+  }
+  function fillFieldHour(){
+    if(F.hour===idx) return;
+    for(let k=0;k<F.nx*F.ny;k++){
+      const pi=F.cell[k], p=pi>=0?grid.points[pi]:null, lv=p?p.lv[idx]:0;
+      F.lv[k]=lv>=2?lv:0;
+      const w=p&&p.wx?WXRGBA[p.wx[idx]]:null, o=k*4;
+      if(w){ F.wx[o]=w[0]; F.wx[o+1]=w[1]; F.wx[o+2]=w[2]; F.wx[o+3]=w[3]*.85; } else F.wx[o+3]=0;
+    }
+    // Wetterbild (Zeile 0 = Norden)
+    if(wcan.width!==F.nx||wcan.height!==F.ny){ wcan.width=F.nx; wcan.height=F.ny; }
+    const wi=wctx.createImageData(F.nx,F.ny);
+    for(let j=0;j<F.ny;j++) for(let i=0;i<F.nx;i++){
+      const o=(j*F.nx+i)*4, q=((F.ny-1-j)*F.nx+i)*4;
+      wi.data[q]=F.wx[o]; wi.data[q+1]=F.wx[o+1]; wi.data[q+2]=F.wx[o+2]; wi.data[q+3]=F.wx[o+3]*255;
+    }
+    wctx.putImageData(wi,0,0);
+    F.hour=idx;
+  }
+  const LVRGB={2:rgbOf(COL[2]),3:rgbOf(COL[3]),4:rgbOf(COL[4])};
+  function renderField(c){
+    if(!F||!W) return;
+    fillFieldHour();
+    const fw=Math.ceil(W/FIELD_RES), fh=Math.ceil(H/FIELD_RES);
+    if(fcan.width!==fw||fcan.height!==fh){ fcan.width=fw; fcan.height=fh; }
+    const img=fctx.createImageData(fw,fh), d=img.data, {st,lat0,lon0,nx,ny,lv}=F;
+    // 1) Wetter als weich verlaufende Tönung
+    const tl=px(lon0-st/2,lat0+(ny-.5)*st), br=px(lon0+(nx-.5)*st,lat0-st/2), cellPx=(br[0]-tl[0])/nx;
+    c.save(); c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    if("filter" in c) c.filter=`blur(${Math.max(1,cellPx*.45).toFixed(1)}px)`;
+    c.drawImage(wcan,tl[0],tl[1],br[0]-tl[0],br[1]-tl[1]); c.restore();
+    // Catmull-Rom-Gewichte: runde, weiche Formen statt Kästchen
+    const catrom=(t,o)=>{ const t2=t*t, t3=t2*t;
+      o[0]=-.5*t3+t2-.5*t; o[1]=1.5*t3-2.5*t2+1; o[2]=-1.5*t3+2*t2+.5*t; o[3]=.5*t3-.5*t2; };
+    const wxw=new Float32Array(4), wyw=new Float32Array(4);
+    for(let y=0;y<fh;y++){
+      const lat=V.maxLat-((y+.5)*FIELD_RES-oy)/scale, gy=(lat-lat0)/st;
+      if(gy<-1||gy>ny) continue;
+      const j0=Math.floor(gy); catrom(gy-j0,wyw);
+      for(let x=0;x<fw;x++){
+        const lon=V.minLon+((x+.5)*FIELD_RES-ox)/(scale*kx), gx=(lon-lon0)/st;
+        if(gx<-1||gx>nx) continue;
+        const i0=Math.floor(gx); catrom(gx-i0,wxw);
+        let v=0;
+        for(let qy=0;qy<4;qy++){ const jj=j0-1+qy; if(jj<0||jj>=ny) continue;
+          for(let qx=0;qx<4;qx++){ const ii=i0-1+qx; if(ii<0||ii>=nx) continue;
+            v+=lv[jj*nx+ii]*wxw[qx]*wyw[qy];
+          } }
+        // Gefahrenstufe als Fläche: ab 1 gelb, ab 2,5 orange, ab 3,5 rot; weicher 0,2-Rand
+        let ah=0, cr=0, cg=0, cb=0;
+        if(v>=.9){ const L=v>=3.5?4:v>=2.5?3:2, col=LVRGB[L]; cr=col[0]; cg=col[1]; cb=col[2];
+          ah=Math.min(1,(v-.9)/.2)*(L>=3?.62:.5); }
+        if(ah<=0) continue;
+        const p4=(y*fw+x)*4;
+        d[p4]=cr; d[p4+1]=cg; d[p4+2]=cb; d[p4+3]=ah*255;
+      }
+    }
+    fctx.putImageData(img,0,0);
+    c.save(); c.setTransform(1,0,0,1,0,0); c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    c.drawImage(fcan,0,0,fw,fh,0,0,W*DPR,H*DPR); c.restore();
+  }
+
   // ---------- Zeichnen: statische Ebene (nur bei Änderung) ----------
   function renderBase(){
     const c=bctx; c.setTransform(DPR,0,0,DPR,0,0); c.clearRect(0,0,W,H);
@@ -322,19 +409,11 @@
       c.fill();
     });
 
-    // Vorhersage als Glüh-Flächen, auf Deutschland zugeschnitten (im gewählten Land übernehmen die Gemeinden)
+    // Vorhersage als zusammenhängende Flächen, auf Deutschland zugeschnitten (im gewählten Land übernehmen die Gemeinden)
     const gm=gemReady(), selF=selected&&stateById(selected);
     c.save(); traceOutline(c); c.clip();
     if(gm){ c.beginPath(); c.rect(0,0,W,H); addRings(c,selF.geometry); c.clip("evenodd"); }
-    for(const pass of [2,3,4]){
-      grid.points.forEach(p=>{
-        if(p.lv[idx]!==pass) return;
-        const q=px(p.lon,p.lat), r=cellR*(pass>=3?1.12:1), col=COL[pass];
-        const g=c.createRadialGradient(q[0],q[1],0,q[0],q[1],r);
-        g.addColorStop(0,hexA(col,pass>=3?.85:.7)); g.addColorStop(.5,hexA(col,pass>=3?.45:.32)); g.addColorStop(1,hexA(col,0));
-        c.fillStyle=g; c.beginPath(); c.arc(q[0],q[1],r,0,6.2832); c.fill();
-      });
-    }
+    renderField(c);
     c.restore();
 
     // Gemeinden: Farbe nach Gefahr (Warnfarben) oder Wetter (Sonne gelblich, Regen blau, Gewitter lila …)
@@ -426,13 +505,6 @@
     ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height); ctx.drawImage(base,0,0);
     ctx.setTransform(DPR,0,0,DPR,0,0);
 
-    // Brennpunkte pulsieren
-    grid.points.forEach((p,i)=>{
-      const lv=p.lv[idx]; if(lv<3) return;
-      const ph=((ts/1600)+(i%7)/7)%1, q=px(p.lon,p.lat);
-      ctx.beginPath(); ctx.arc(q[0],q[1],cellR*(.25+ph*.75),0,6.2832);
-      ctx.strokeStyle=hexA(COL[lv],(1-ph)*.55); ctx.lineWidth=1.5; ctx.stroke();
-    });
 
     // Gewählter Hover-Punkt
     if(hoverPt){ ctx.beginPath(); ctx.arc(hoverPt[0],hoverPt[1],4,0,6.2832); ctx.fillStyle="rgba(238,244,247,.9)"; ctx.fill(); }
