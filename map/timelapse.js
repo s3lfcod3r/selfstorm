@@ -30,9 +30,10 @@
 
   function fmtGenerated(g){
     if(!g) return "Stand unbekannt";
-    const d=new Date(g+"Z");
+    // neue Raster: ISO mit "Z"; ältere Raster ohne Zeitzone sind ebenfalls UTC
+    const d=new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(g)?g:g+"Z");
     if(isNaN(d.getTime())) return "Stand unbekannt";
-    return "Raster-Stand: "+WD[d.getDay()]+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr UTC";
+    return "Raster-Stand: "+WD[d.getDay()]+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr";
   }
   function nowIndex(hours){ const now=Date.now(); let b=0; for(let i=0;i<hours.length;i++){ if(new Date(hours[i]+"Z").getTime()<=now) b=i; else break; } return b; }
   function resize(){

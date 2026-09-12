@@ -91,7 +91,7 @@ for (let b = 0; b < grid.length; b += BATCH) {
 
 // --- Ausgabe schreiben (kompakt) ---
 const out = {
-  generated: hours ? hours[0] : null,        // erster Vorhersagestundenwert (UTC)
+  generated: new Date().toISOString(),       // Zeitpunkt der Berechnung (ISO, UTC)
   bbox: { minLat: +minLat.toFixed(3), maxLat: +maxLat.toFixed(3), minLon: +minLon.toFixed(3), maxLon: +maxLon.toFixed(3) },
   step: STEP,
   hours,                                       // 48 UTC-Zeitstempel
