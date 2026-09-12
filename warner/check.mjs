@@ -1,10 +1,10 @@
 // SelfStorm Wächter — prüft die konfigurierten Orte und schickt bei Gefahr
 // ntfy-Push + E-Mail. Läuft als GitHub Action (stündlich). Entprellung via state.json.
 //
-// Hinweis: Die Analyse-Heuristik ist bewusst identisch zur Webseite (index.html)
-// gehalten. Wird sie dort angepasst, hier mitziehen (kleine, überschaubare Duplizierung).
+// Die Gefahren-Heuristik kommt aus ../hazards.js (gemeinsam mit Webseite und Karte).
 
 import fs from "node:fs/promises";
+import H from "../hazards.js";
 
 const FC = "https://api.open-meteo.com/v1/forecast";
 const SITE = "https://wetter.selfcoder.de";
@@ -19,55 +19,7 @@ try { state = JSON.parse(await fs.readFile(stateUrl, "utf8")); } catch { /* erst
 const NTFY_URL = process.env.NTFY_URL || "https://ntfy.sh";
 const NTFY_TOPIC = process.env.NTFY_TOPIC || "";
 
-const num = v => (v == null || Number.isNaN(v)) ? 0 : v;
-
-const HAZ_ADVICE = {
-  "Hagel": "Auto möglichst unterstellen oder schützen.",
-  "Gewitter": "Bei Gewitter drinnen bleiben, Loses draußen sichern.",
-  "Hagel möglich": "Kräftige Gewitter, Hagel möglich — Auto lieber unterstellen.",
-  "Gewitter möglich": "Einzelne Gewitter möglich.",
-  "Orkanböen": "Sturmgefahr — Loses sichern, Bäume/Gerüste meiden.",
-  "Sturmböen": "Loses draußen sichern, im Wald aufpassen.",
-  "Windböen": "Vereinzelt kräftige Böen.",
-  "Starkregen": "Überflutung und Aquaplaning möglich.",
-  "kräftiger Regen": "Zeitweise kräftiger Regen.",
-  "starke Hitze": "Große Hitze — viel trinken, Mittagssonne meiden.",
-  "Hitze": "Warm — viel trinken, Schatten suchen.",
-  "Glatteis": "Glatteis durch gefrierenden Regen — sehr vorsichtig fahren und gehen.",
-  "Glättegefahr": "Rutschgefahr durch Glätte.",
-  "strenger Frost": "Strenger Frost — Frostschutz beachten.",
-  "Frost": "Frost — Glätte und Kälte möglich.",
-  "starker Schneefall": "Starker Schneefall — Behinderungen und Glätte.",
-  "Schneefall": "Schneefall — mögliche Glätte.",
-  "dichter Nebel": "Dichter Nebel — sehr schlechte Sicht im Verkehr.",
-  "Nebel": "Nebel — schlechte Sicht."
-};
-
-function analyze(fc) {
-  const h = fc.hourly, t = h.time, out = { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set() };
-  for (let i = 0; i < t.length; i++) {
-    const code = h.weather_code[i], cape = num(h.cape[i]), gust = num(h.wind_gusts_10m[i]),
-          pr = num(h.precipitation[i]), temp = num(h.temperature_2m && h.temperature_2m[i]),
-          snow = num(h.snowfall && h.snowfall[i]), vis = num(h.visibility && h.visibility[i]);
-    const hits = [];
-    if (code === 96 || code === 99) hits.push([4, "Hagel"]);
-    else if (code === 95) hits.push([cape >= 1500 ? 4 : 3, "Gewitter"]);
-    if (cape >= 1200) hits.push([3, "Hagel möglich"]); else if (cape >= 800) hits.push([2, "Gewitter möglich"]);
-    if (gust >= 90) hits.push([4, "Orkanböen"]); else if (gust >= 70) hits.push([3, "Sturmböen"]); else if (gust >= 55) hits.push([2, "Windböen"]);
-    if (pr >= 15) hits.push([3, "Starkregen"]); else if (pr >= 5) hits.push([2, "kräftiger Regen"]);
-    if (temp >= 36) hits.push([3, "starke Hitze"]); else if (temp >= 30) hits.push([2, "Hitze"]);
-    if (code === 66 || code === 67) hits.push([3, "Glatteis"]); else if (temp <= 1 && temp >= -3 && pr >= 0.1) hits.push([2, "Glättegefahr"]);
-    if (temp <= -10) hits.push([3, "strenger Frost"]); else if (temp <= -5) hits.push([2, "Frost"]);
-    if (snow >= 5 || code === 75 || code === 86) hits.push([3, "starker Schneefall"]); else if (snow >= 1 || code === 71 || code === 73 || code === 85) hits.push([2, "Schneefall"]);
-    if (vis > 0 && vis < 200) hits.push([3, "dichter Nebel"]); else if (vis > 0 && vis < 1000) hits.push([2, "Nebel"]); else if (vis <= 0 && (code === 45 || code === 48)) hits.push([2, "Nebel"]);
-    if (!hits.length) continue;
-    hits.sort((a, b) => b[0] - a[0]);
-    const lv = hits[0][0], label = hits[0][1];
-    if (lv >= 2) { out.events.push({ time: t[i], lv, label }); hits.forEach(x => out.tags.add(x[1])); }
-    if (lv > out.peak) { out.peak = lv; out.peakTime = t[i]; out.peakLabel = label; }
-  }
-  return out;
-}
+const { HAZ_ADVICE, analyze } = H;
 
 function fmtWhen(t) {
   if (!t) return "";

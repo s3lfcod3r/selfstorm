@@ -4,6 +4,7 @@
 // Datei — schnell und schonend für die kostenlosen API-Limits.
 
 import fs from "node:fs/promises";
+import H from "../hazards.js";
 
 const FC = "https://api.open-meteo.com/v1/forecast";
 const STEP = 0.4;          // Rasterweite in Grad (~28–44 km)
@@ -41,25 +42,8 @@ for (let lat = Math.ceil(minLat / STEP) * STEP; lat <= maxLat; lat += STEP) {
 }
 console.log(`Rasterpunkte in Deutschland: ${grid.length}`);
 
-// --- Gefahren-Level + Art pro Stunde (gleiche Heuristik wie Seite/Warner) ---
+// --- Gefahren-Level + Art pro Stunde: gemeinsame Heuristik aus ../hazards.js ---
 // Kategorien: 1 Gewitter/Hagel, 2 Sturm, 3 Starkregen, 4 Hitze, 5 Frost/Glätte, 6 Schnee, 7 Nebel
-const n = v => (v == null || Number.isNaN(v)) ? 0 : v;
-function haz(code, cape, gust, pr, temp, snow, vis) {
-  const hits = [];
-  if (code === 96 || code === 99) hits.push([4, 1]);
-  else if (code === 95) hits.push([cape >= 1500 ? 4 : 3, 1]);
-  if (cape >= 1200) hits.push([3, 1]); else if (cape >= 800) hits.push([2, 1]);
-  if (gust >= 90) hits.push([4, 2]); else if (gust >= 70) hits.push([3, 2]); else if (gust >= 55) hits.push([2, 2]);
-  if (pr >= 15) hits.push([3, 3]); else if (pr >= 5) hits.push([2, 3]);
-  if (temp >= 36) hits.push([3, 4]); else if (temp >= 30) hits.push([2, 4]);
-  if (code === 66 || code === 67) hits.push([3, 5]); else if (temp <= 1 && temp >= -3 && pr >= 0.1) hits.push([2, 5]);
-  if (temp <= -10) hits.push([3, 5]); else if (temp <= -5) hits.push([2, 5]);
-  if (snow >= 5 || code === 75 || code === 86) hits.push([3, 6]); else if (snow >= 1 || code === 71 || code === 73 || code === 85) hits.push([2, 6]);
-  if (vis > 0 && vis < 200) hits.push([3, 7]); else if (vis > 0 && vis < 1000) hits.push([2, 7]); else if (vis <= 0 && (code === 45 || code === 48)) hits.push([2, 7]);
-  if (!hits.length) return [0, 0];
-  hits.sort((a, b) => b[0] - a[0]);
-  return hits[0];
-}
 
 // --- Open-Meteo im Batch abfragen ---
 let hours = null;
@@ -81,9 +65,8 @@ for (let b = 0; b < grid.length; b += BATCH) {
     if (!hours) hours = h.time;
     const g = chunk[i]; g.lv = []; g.hz = [];
     for (let k = 0; k < h.time.length; k++) {
-      const r = haz(h.weather_code[k], n(h.cape[k]), n(h.wind_gusts_10m[k]), n(h.precipitation[k]),
-                    n(h.temperature_2m && h.temperature_2m[k]), n(h.snowfall && h.snowfall[k]), n(h.visibility && h.visibility[k]));
-      g.lv.push(r[0]); g.hz.push(r[1]);
+      const r = H.hourHazard(h, k);
+      g.lv.push(r.lv); g.hz.push(r.cat);
     }
   });
   console.log(`Batch ${b / BATCH + 1}: ${arr.length} Punkte`);
