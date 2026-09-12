@@ -7,7 +7,6 @@
 <meta name="description" content="Animierte Wetter-Gefahrenkarte für Deutschland: Gewitter, Hagel, Hitze, Schnee und mehr im Zeitraffer über die nächsten Tage." />
 <link rel="icon" type="image/png" href="assets/shield.png" />
 <link rel="stylesheet" href="tokens.css" />
-<link rel="stylesheet" href="map/vendor/leaflet/leaflet.css" />
 <link rel="stylesheet" href="map/dekarte.css" />
 <style>
   *{box-sizing:border-box}
@@ -37,7 +36,7 @@
     <img class="shield" src="assets/shield.png" alt="SelfStorm" width="42" height="42" />
     <span class="wordmark"><span class="w-self">Self</span><span class="w-name">Storm</span></span>
   </div>
-  <p class="sub">Wetter-Zeitraffer für Deutschland — Gewitter, Hagel, Hitze, Schnee &amp; mehr über die nächsten ~3 Tage, dazu die amtlichen DWD-Warnungen. <b>▶ Play</b> drücken, ein Bundesland antippen oder frei hineinzoomen.</p>
+  <p class="sub">Wetter-Zeitraffer für Deutschland — Gewitter, Hagel, Hitze, Schnee &amp; mehr über die nächsten ~3 Tage, dazu die amtlichen DWD-Warnungen. <b>▶ Play</b> drücken oder ein Bundesland antippen.</p>
 
   <section id="dekarte"></section>
 
@@ -47,10 +46,8 @@
     Im Ernstfall gilt der DWD (WarnWetter / NINA).
   </div>
 
-  <footer>Datengrundlage: Open-Meteo (Raster alle 6 Stunden neu vorgerechnet, beim Zoomen live) · amtliche Warnungen: Deutscher Wetterdienst · Kartenbild © OpenStreetMap-Mitwirkende · Teil der Self-Reihe</footer>
+  <footer>Datengrundlage: Open-Meteo (Raster alle 6 Stunden neu vorgerechnet) · DWD-Warnungen via Bright Sky · Teil der Self-Reihe</footer>
 </div>
-<script src="hazards.js"></script>
-<script src="map/vendor/leaflet/leaflet.js"></script>
 <script src="map/dekarte.js"></script>
 </body>
 </html>
