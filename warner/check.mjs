@@ -81,12 +81,12 @@ const cap = s => String(s || "").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/
 async function fetchDwd(loc) {
   try {
     const r = await fetch(`https://api.brightsky.dev/alerts?lat=${loc.lat}&lon=${loc.lon}&tz=Europe/Berlin`);
-    if (!r.ok) return { level: 0, items: [] };
+    if (!r.ok) { console.error("DWD-Abruf fehlgeschlagen für", loc.name, "HTTP " + r.status); return { level: 0, items: [], unknown: true }; }
     const j = await r.json();
     const SEVLV = { minor: 2, moderate: 3, severe: 4, extreme: 4 };
     const items = (j.alerts || []).map(x => ({ event: x.event_de || x.event_en || "Warnung", sev: x.severity }));
-    return { level: items.reduce((m, i) => Math.max(m, SEVLV[i.sev] || 2), 0), items };
-  } catch (e) { return { level: 0, items: [] }; }
+    return { level: items.reduce((m, i) => Math.max(m, SEVLV[i.sev] || 2), 0), items, unknown: false };
+  } catch (e) { console.error("DWD-Abruf fehlgeschlagen für", loc.name, e.message); return { level: 0, items: [], unknown: true }; }
 }
 
 function verdict(a) {
@@ -116,7 +116,7 @@ async function sendMail(subject, text) {
   console.log("E-Mail gesendet an", MAIL_TO);
 }
 
-const todayStr = new Date().toISOString().slice(0, 10);
+const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Berlin" });
 const threshold = cfg.notifyLevel || 3;
 let changed = false;
 const alerts = [];
@@ -127,14 +127,15 @@ for (const loc of cfg.locations) {
     hourly: "temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
     timezone: "auto", forecast_days: String(cfg.forecastDays || 3)
   });
-  let fc;
+  let fc = null;
   try {
     const r = await fetch(`${FC}?${p}`);
     if (!r.ok) throw new Error("HTTP " + r.status);
     fc = await r.json();
-  } catch (e) { console.error("Abruf fehlgeschlagen für", loc.name, e.message); continue; }
+  } catch (e) { console.error("Wetter-Abruf fehlgeschlagen für", loc.name, e.message); }
 
-  const a = analyze(fc);
+  // Vorhersage weg: Ort NICHT überspringen — die amtliche DWD-Ebene wird trotzdem geprüft.
+  const a = fc ? analyze(fc) : { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set(), unknown: true };
   const dwd = await fetchDwd(loc);
   const peak = Math.max(a.peak, dwd.level);
   const key = `${loc.lat},${loc.lon}`;
@@ -143,15 +144,17 @@ for (const loc of cfg.locations) {
   if (peak >= threshold) {
     const alreadyToday = prev.date === todayStr && prev.level >= peak;
     if (!alreadyToday) { alerts.push({ loc, a, dwd, peak }); state[key] = { level: peak, date: todayStr }; changed = true; }
-  } else if (prev.level) {
-    state[key] = { level: 0, date: todayStr }; changed = true; // Entwarnung merken
+  } else if (prev.level && !a.unknown && !dwd.unknown) {
+    state[key] = { level: 0, date: todayStr }; changed = true; // Entwarnung nur bei vollständiger Datenlage
   }
 }
 
 for (const { loc, a, dwd, peak } of alerts) {
   const official = dwd.items.length ? `Amtliche DWD-Warnung: ${cap(dwd.items[0].event)}. ` : "";
   const title = `SelfStorm: ${loc.name} - ${LEVEL[peak]}`;
-  const body = official + verdict(a);
+  const missing = a.unknown ? "Wettervorhersage nicht abrufbar — Warnung beruht allein auf der amtlichen DWD-Meldung. "
+    : dwd.unknown ? "DWD-Warnungen nicht abrufbar — Einschätzung nur aus der Wettervorhersage. " : "";
+  const body = missing + official + (a.unknown ? "" : verdict(a));
   console.log("ALARM:", title, "|", body);
   try { await sendNtfy(title, body, peak); } catch (e) { console.error("ntfy-Fehler:", e.message); }
   try { await sendMail(title, `${loc.name}\n${body}`); } catch (e) { console.error("mail-Fehler:", e.message); }
