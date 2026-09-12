@@ -55,7 +55,7 @@ confident a warning is.
 ## 🗺️ Roadmap
 
 - [x] **Phase 1** — Live-Ampel-Webseite (GitHub Pages)
-- [ ] **Phase 2** — Wächter mit Push- & E-Mail-Benachrichtigung
+- [x] **Phase 2** — Wächter mit Push- & E-Mail-Benachrichtigung
 - [ ] **Phase 3** — Feinschliff, amtliche DWD-Warnungen, App
 
 ## 📄 Lizenz / License

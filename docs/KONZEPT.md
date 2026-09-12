@@ -1,6 +1,6 @@
 # SelfStorm — Konzept
 
-> **Status:** Planungsphase (nur Konzept, noch kein Code)
+> **Status:** Umgesetzt — Ampel-Webseite und Wächter laufen (Dokument beschreibt das ursprüngliche Konzept)
 > **Stand:** 2026-07-15
 > **Idee:** Sven
 
