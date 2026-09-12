@@ -7,6 +7,7 @@
 <meta name="description" content="Animierte Wetter-Gefahrenkarte für Deutschland: Gewitter, Hagel, Hitze, Schnee und mehr im Zeitraffer über die nächsten Tage." />
 <link rel="icon" type="image/png" href="assets/shield.png" />
 <link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="map/dekarte.css" />
 <style>
   *{box-sizing:border-box}
   html,body{margin:0}
@@ -15,7 +16,7 @@
     background:radial-gradient(1100px 640px at 82% -10%, rgba(51,167,140,.13), transparent 62%), var(--self-bg-0);
     background-attachment:fixed;min-height:100vh;line-height:1.5;-webkit-font-smoothing:antialiased;
   }
-  .wrap{max-width:900px;margin:0 auto;padding:clamp(18px,4vw,40px) clamp(14px,4vw,26px) 60px}
+  .wrap{max-width:1180px;margin:0 auto;padding:clamp(18px,4vw,40px) clamp(14px,4vw,26px) 60px}
   a.back{color:var(--self-text-2);text-decoration:none;font-size:.9rem;display:inline-block;margin-bottom:14px}
   a.back:hover{color:var(--self-teal)}
   .brand{display:flex;align-items:center;gap:14px;margin-bottom:6px}
@@ -24,29 +25,7 @@
   .wordmark .w-self{color:var(--self-ice-bright)} .wordmark .w-name{color:var(--self-teal)}
   .sub{color:var(--self-text-2);margin:2px 0 20px;font-size:.98rem}
 
-  .stage{
-    position:relative;background:var(--self-bg-2);border:1px solid var(--self-line);
-    border-radius:var(--self-radius);overflow:hidden;box-shadow:0 18px 50px -18px rgba(0,0,0,.7);
-    max-width:540px;margin:0 auto;
-  }
-  canvas{display:block;width:100%;height:auto;touch-action:none}
-  .hud{position:absolute;top:12px;left:14px;pointer-events:none;font-variant-numeric:tabular-nums}
-  .hud .when{font-size:1.05rem;font-weight:700}
-  .hud .zones{font-size:.82rem;color:var(--self-text-2);margin-top:2px}
-  .hud .zones b{color:#f5892f}
-  .hud .haz{font-size:.8rem;color:var(--self-teal);margin-top:4px;max-width:60%}
-  .controls{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--self-line)}
-  .play{flex:none;width:44px;height:44px;border-radius:999px;border:0;cursor:pointer;background:var(--self-teal);color:#05110d;font-size:1.1rem;display:grid;place-items:center;transition:filter .2s,transform .15s var(--self-ease)}
-  .play:hover{filter:brightness(1.08)} .play:active{transform:scale(.94)}
-  input[type=range]{flex:1;accent-color:var(--self-teal);height:26px}
-  .speed{flex:none;background:var(--self-bg-3);border:1px solid var(--self-line-strong);color:var(--self-text);border-radius:var(--self-radius-sm);padding:7px 11px;cursor:pointer;font-size:.85rem}
-  .speed:hover{border-color:var(--self-teal)}
-  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;font-size:.85rem;color:var(--self-text-2)}
-  .legend span{display:inline-flex;align-items:center;gap:7px}
-  .dot{width:13px;height:13px;border-radius:50%}
-  .d2{background:#f4c534}.d3{background:#f5892f}.d4{background:#e5484d}
   .note{margin-top:18px;background:color-mix(in srgb, var(--self-yellow) 8%, transparent);border:1px solid color-mix(in srgb, var(--self-yellow) 26%, transparent);border-radius:12px;padding:12px 15px;color:color-mix(in srgb, var(--self-yellow) 60%, var(--self-text));font-size:.84rem}
-  .loading{padding:60px 20px;text-align:center;color:var(--self-text-2)}
   footer{margin-top:26px;color:var(--self-text-3);font-size:.8rem;text-align:center}
 </style>
 </head>
@@ -57,28 +36,9 @@
     <img class="shield" src="assets/shield.png" alt="SelfStorm" width="42" height="42" />
     <span class="wordmark"><span class="w-self">Self</span><span class="w-name">Storm</span></span>
   </div>
-  <p class="sub">Wetter-Zeitraffer für Deutschland — Gewitter, Hagel, Hitze, Schnee &amp; mehr über die nächsten ~3 Tage. <b>▶ Play</b> drücken.</p>
+  <p class="sub">Wetter-Zeitraffer für Deutschland — Gewitter, Hagel, Hitze, Schnee &amp; mehr über die nächsten ~3 Tage, dazu die amtlichen DWD-Warnungen. <b>▶ Play</b> drücken oder ein Bundesland antippen.</p>
 
-  <div class="stage">
-    <div id="tl-loading" class="loading">Lade Kartendaten…</div>
-    <canvas id="tl-canvas" hidden></canvas>
-    <div class="hud">
-      <div class="when" id="tl-when">—</div>
-      <div class="zones" id="tl-zones"></div>
-      <div class="haz" id="tl-haz"></div>
-    </div>
-    <div class="controls">
-      <button class="play" id="tl-play" aria-label="Abspielen">▶</button>
-      <input type="range" id="tl-slider" min="0" value="0" />
-      <button class="speed" id="tl-speed">1×</button>
-    </div>
-  </div>
-
-  <div class="legend">
-    <span><i class="dot d2"></i> Beobachten</span>
-    <span><i class="dot d3"></i> Warnung (Gewitter / Sturm / Hitze …)</span>
-    <span><i class="dot d4"></i> Unwetter (Hagel / schweres Gewitter)</span>
-  </div>
+  <section id="dekarte"></section>
 
   <div class="note">
     ⚠️ Modell-Vorhersage, keine amtliche Warnung. Die Karte zeigt alle erkannten Wettergefahren
@@ -86,8 +46,8 @@
     Im Ernstfall gilt der DWD (WarnWetter / NINA).
   </div>
 
-  <footer>Datengrundlage: Open-Meteo · Raster ~0,4° · alle 6 Stunden neu vorgerechnet (<span id="tl-generated"></span>) · Teil der Self-Reihe</footer>
+  <footer>Datengrundlage: Open-Meteo (Raster alle 6 Stunden neu vorgerechnet) · DWD-Warnungen via Bright Sky · Teil der Self-Reihe</footer>
 </div>
-<script src="map/timelapse.js"></script>
+<script src="map/dekarte.js"></script>
 </body>
 </html>

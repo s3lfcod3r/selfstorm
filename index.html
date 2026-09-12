@@ -7,6 +7,7 @@
 <meta name="description" content="Deine Unwetter- und Hagel-Ampel: mehrere Wettermodelle ehrlich gegeneinander gerechnet, für deine Orte. Kostenlos, kein Konto." />
 <link rel="icon" type="image/png" href="assets/shield.png" />
 <link rel="stylesheet" href="tokens.css" />
+<link rel="stylesheet" href="map/dekarte.css" />
 <style>
   :root{
     /* Farben strikt aus dem Self Brand-Kit (tokens.css) — keine rohen Marken-Hex */
@@ -70,48 +71,6 @@
   /* Deutschland-Übersicht ein-/ausklappen */
   .ov-toggle{display:block;width:100%;margin:20px 0 0;background:var(--surface);border:1px solid var(--border);color:var(--muted);border-radius:12px;padding:12px 15px;cursor:pointer;font-size:.9rem;text-align:left;transition:border-color .2s var(--ease),color .2s var(--ease)}
   .ov-toggle:hover{border-color:var(--teal);color:var(--text)}
-
-  /* Warnkarte nach Bundesländern */
-  .warnmap{margin:24px 0 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 16px}
-  .wm-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-  .wm-head h2{margin:0;font-size:1.05rem;font-weight:700}
-  .wm-sub{color:var(--muted);font-size:.82rem}
-  .wm-sub a{color:var(--teal);text-decoration:none}
-  .wm-sub a:hover{text-decoration:underline}
-  .wm-grid{display:grid;grid-template-columns:minmax(0,300px) 1fr;gap:20px;align-items:start}
-  @media(max-width:560px){.wm-grid{grid-template-columns:1fr}}
-  #wm-canvas{display:block;width:100%;height:auto;cursor:pointer}
-  .wm-legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:10px;font-size:.76rem;color:var(--muted)}
-  .wm-legend span{display:inline-flex;align-items:center;gap:6px}
-  .wm-legend i{width:11px;height:11px;border-radius:3px}
-  .wm-list h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 8px}
-  .wm-row{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--border);cursor:pointer}
-  .wm-row:first-of-type{border-top:0}
-  .wm-row:hover .st{color:var(--teal)}
-  .wm-row .sq{width:12px;height:12px;border-radius:3px;flex:none;margin-top:3px}
-  .wm-row .st{font-weight:600}
-  .wm-row .wm-ev{color:var(--muted);font-size:.82rem}
-  .wm-empty{color:var(--muted);font-style:italic;font-size:.86rem}
-  .wm-detail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted)}
-  .wm-detail b{color:var(--text)}
-
-  /* Zeitraffer-Karte (eingebettet) */
-  .tlmap{margin:16px 0 6px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
-  .tl-stage{position:relative;max-width:460px;margin:0 auto}
-  #tl-canvas{display:block;width:100%;height:auto}
-  .tl-hud{position:absolute;top:8px;left:10px;pointer-events:none;font-variant-numeric:tabular-nums}
-  .tl-when{font-size:1rem;font-weight:700}
-  .tl-zones{font-size:.8rem;color:var(--muted)} .tl-zones b{color:var(--orange)}
-  .tl-haz{font-size:.78rem;color:var(--teal);margin-top:3px;max-width:70%}
-  .tl-controls{display:flex;align-items:center;gap:10px;max-width:460px;margin:12px auto 0}
-  .tl-play{flex:none;width:40px;height:40px;border-radius:999px;border:0;cursor:pointer;background:var(--teal);color:#05110d;font-size:1rem;display:grid;place-items:center;transition:filter .2s}
-  .tl-play:hover{filter:brightness(1.08)}
-  .tl-controls input[type=range]{flex:1;accent-color:var(--teal);height:24px}
-  .tl-speed{flex:none;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text);border-radius:var(--self-radius-sm);padding:6px 10px;cursor:pointer;font-size:.82rem}
-  .tl-speed:hover{border-color:var(--teal)}
-  .tl-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px;font-size:.76rem;color:var(--muted);justify-content:center}
-  .tl-legend span{display:inline-flex;align-items:center;gap:6px}
-  .tl-legend i{width:11px;height:11px;border-radius:50%}
 
   /* Search */
   .search{margin:26px 0 8px;position:relative}
@@ -225,14 +184,34 @@
   .tiles{padding:12px 18px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
   .tile{background:rgba(0,0,0,.10);border:1px solid var(--border);border-radius:12px;padding:9px 12px}
   .tile-h{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
-  .tile.wide .spk{width:100%;height:auto;display:block;max-height:70px}
+  .spk-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .spk-leg{text-transform:none;letter-spacing:0;display:inline-flex;align-items:center;gap:5px}
+  .spk-leg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-left:6px}
+  .spk-leg .lg-t{background:linear-gradient(90deg,#4a90d9,#e8c547,#f5892f)}
+  .spk-leg .lg-r{height:8px;width:6px;background:#4a90d9;opacity:.6}
+  .spk-leg .lg-n{height:8px;background:rgba(74,144,217,.25)}
+  .spk-box{position:relative;height:clamp(110px,18vw,140px);margin-top:14px;touch-action:pan-y;cursor:crosshair}
+  .spk-box svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
+  .spk-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none}
+  .spk-pt b{position:absolute;left:50%;transform:translateX(-50%);font-size:.74rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .spk-pt.max{background:#f5892f}.spk-pt.max b{bottom:9px;color:#f5892f}
+  .spk-pt.min{background:#4a90d9}.spk-pt.min b{top:9px;color:#6fb0f0}
+  .spk-pt.now{width:11px;height:11px;margin:-5.5px 0 0 -5.5px;background:var(--teal);box-shadow:0 0 0 3px var(--surface),0 0 12px var(--teal)}
+  .spk-pt.now b{bottom:10px;left:0;transform:none;color:var(--teal-bright)}
+  .spk-cur{position:absolute;top:0;bottom:0;width:0;border-left:1px solid rgba(238,244,247,.35);pointer-events:none}
+  .spk-cur i{position:absolute;left:-5px;width:9px;height:9px;margin-top:-4.5px;border-radius:50%;background:var(--text);box-shadow:0 0 8px rgba(238,244,247,.7)}
+  .spk-cur span{position:absolute;top:-12px;white-space:nowrap;font-size:.72rem;background:rgba(13,17,23,.94);border:1px solid var(--border-strong);border-radius:7px;padding:2px 7px;color:var(--muted)}
+  .spk-cur span b{color:var(--text)}
+  .spk-ax{position:relative;height:16px;margin-top:6px;font-size:.66rem;color:var(--muted);font-variant-numeric:tabular-nums}
+  .spk-ax span{position:absolute;transform:translateX(-50%)}
+  .spk-ax span:first-child{transform:none}
+  .spk-ax span:last-child{transform:none}
+  @media(max-width:560px){.spk-ax .h3{display:none}}
   .tile-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
-  .tile-ax{display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted);margin-top:4px}
   .gauge,.sun{width:100%;height:auto;max-height:84px;display:block}
   .g-num{fill:var(--text);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
   .g-u{fill:var(--muted);font-size:9px}
   .s-t{fill:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
-  .spk-n{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
   .feel-n{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
   .feel-s{font-size:.72rem;color:var(--muted);margin-top:4px}
   .tile.mini{display:flex;flex-direction:column;justify-content:center}
@@ -298,52 +277,7 @@
 
   <button class="ov-toggle" id="ovToggle" hidden>Ganz Deutschland ansehen ▾</button>
   <div id="overview">
-  <section class="warnmap" id="warnmap" hidden>
-    <div class="wm-head">
-      <h2>Warnlage in Deutschland</h2>
-      <span class="wm-sub">Amtliche DWD-Warnungen je Bundesland · <a href="karte.html">Zeitraffer-Karte →</a></span>
-    </div>
-    <div class="wm-grid">
-      <div>
-        <canvas id="wm-canvas"></canvas>
-        <div class="wm-legend">
-          <span><i style="background:var(--green)"></i> keine Warnung</span>
-          <span><i style="background:var(--yellow)"></i> Wetterwarnung</span>
-          <span><i style="background:var(--orange)"></i> markant</span>
-          <span><i style="background:var(--red)"></i> Unwetter</span>
-        </div>
-      </div>
-      <div class="wm-list" id="wm-list"><h3>Aktuelle Meldungen</h3><div class="wm-empty">Lädt…</div></div>
-    </div>
-    <div class="wm-detail" id="wm-detail">Tipp: Bundesland auf der Karte oder in der Liste antippen für Details.</div>
-  </section>
-
-  <section class="tlmap" id="tlmap">
-    <div class="wm-head">
-      <h2>Zeitraffer — nächste ~3 Tage</h2>
-      <span class="wm-sub">Alle Gefahren im Verlauf · <a href="karte.html">groß ansehen →</a></span>
-    </div>
-    <div class="tl-stage">
-      <div id="tl-loading" style="padding:40px 10px;text-align:center;color:var(--muted)">Lade Karte…</div>
-      <canvas id="tl-canvas" hidden></canvas>
-      <div class="tl-hud">
-        <div class="tl-when" id="tl-when">—</div>
-        <div class="tl-zones" id="tl-zones"></div>
-        <div class="tl-haz" id="tl-haz"></div>
-      </div>
-    </div>
-    <div class="tl-controls">
-      <button class="tl-play" id="tl-play" aria-label="Abspielen">▶</button>
-      <input type="range" id="tl-slider" min="0" value="0" />
-      <button class="tl-speed" id="tl-speed">1×</button>
-    </div>
-    <div class="tl-legend">
-      <span><i style="background:var(--yellow)"></i> Beobachten</span>
-      <span><i style="background:var(--orange)"></i> Warnung</span>
-      <span><i style="background:var(--red)"></i> Unwetter</span>
-    </div>
-    <div class="wm-sub" id="tl-generated" style="text-align:center;margin-top:8px"></div>
-  </section>
+  <section id="dekarte" data-link="karte.html"></section>
   </div><!-- /overview -->
 
   <section class="search">
@@ -655,6 +589,7 @@
     el.innerHTML=cardHeadHtml(loc, lvl, verdict, a, con, dwd)+nowcastHtml(fc)+dwdHtml(dwd)
       +trendHtml(a, fc, loc)+detailsHtml(fc, a)+tilesHtml(fc);
     attachRemove(el,loc);
+    el.querySelectorAll("[data-spk]").forEach(wireSpark);
     const tg=el.querySelector("[data-det]");
     if(tg) tg.onclick=()=>{
       const open=tg.getAttribute("aria-pressed")==="true";
@@ -816,24 +751,54 @@
       d+="C"+(b[0]+(c[0]-a[0])/6).toFixed(1)+","+(b[1]+(c[1]-a[1])/6).toFixed(1)+" "+(c[0]-(e[0]-b[0])/6).toFixed(1)+","+(c[1]-(e[1]-b[1])/6).toFixed(1)+" "+c[0].toFixed(1)+","+c[1].toFixed(1); }
     return d; }
 
+  // 24-Stunden-Verlauf: volle Breite, Nachtbereiche, Stundenachse, Werte beim Drueberfahren
   function sparkTile(fc){
     const h=fc&&fc.hourly; if(!h||!h.time) return "";
-    const i0=nowIndex(h.time), N=24, T=[], P=[];
-    for(let k=0;k<N&&i0+k<h.time.length;k++){ T.push(num(h.temperature_2m[i0+k])); P.push(num(h.precipitation_probability[i0+k])); }
-    if(T.length<3) return "";
-    const W=300,H=94,base=H-16,top=14,tmin=Math.min(...T),tmax=Math.max(...T),span=Math.max(1,tmax-tmin);
-    const X=k=>6+k/(T.length-1)*288, Y=v=>top+(1-(v-tmin)/span)*(base-top);
-    const pts=T.map((v,k)=>[X(k),Y(v)]), line=smoothPath(pts), area=line+` L${X(T.length-1).toFixed(1)},${base} L6,${base} Z`;
-    let rb=""; P.forEach((p,k)=>{ if(p<5)return; const bh=p/100*13; rb+=`<rect x="${(X(k)-3).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="6" height="${bh.toFixed(1)}" rx="1.5" fill="#4a90d9" opacity=".3"/>`; });
+    const i0=nowIndex(h.time), rows=[];
+    for(let k=0;k<=24&&i0+k<h.time.length;k++){ const i=i0+k;
+      rows.push([h.time[i], num(h.temperature_2m[i]), num(h.precipitation_probability[i]), num(h.precipitation[i])]); }
+    if(rows.length<3) return "";
+    const n=rows.length, T=rows.map(r=>r[1]), tmin=Math.min(...T), tmax=Math.max(...T), span=Math.max(2,tmax-tmin);
+    const W=1000, H=100, X=k=>k/(n-1)*W, Y=v=>14+(1-(v-tmin)/span)*52;   // Kurve im Band 14..66, darunter Regen
+    const pts=T.map((v,k)=>[X(k),Y(v)]), line=smoothPath(pts), area=line+` L${W},100 L0,100 Z`;
+    const d=fc.daily||{}, days=(d.sunrise||[]).map((sr,j)=>[sr,d.sunset[j]]);
+    const isNight=t=>!days.some(([sr,ss])=>sr&&ss&&t>=sr.slice(0,13)&&t<ss.slice(0,13)+":59");
+    let night="", bars="";
+    rows.forEach((r,k)=>{
+      if(isNight(r[0])) night+=`<rect x="${(X(k)-W/(n-1)/2).toFixed(1)}" y="0" width="${(W/(n-1)+.5).toFixed(1)}" height="100" fill="rgba(74,144,217,.07)"/>`;
+      if(r[2]>=5){ const bh=r[2]/100*30; bars+=`<rect x="${(X(k)-9).toFixed(1)}" y="${(100-bh).toFixed(1)}" width="18" height="${bh.toFixed(1)}" rx="3" fill="#4a90d9" opacity="${Math.min(.7,.25+r[3]*.25).toFixed(2)}"/>`; }
+    });
+    const pos=(k,v)=>`left:${(X(k)/W*100).toFixed(2)}%;top:${(Y(v)).toFixed(2)}%`;
     const iMax=T.indexOf(tmax), iMin=T.indexOf(tmin);
-    const mark=(k,v,c,dy)=>`<circle cx="${X(k).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3" fill="${c}"/><text class="spk-n" x="${X(k).toFixed(1)}" y="${(Y(v)+dy).toFixed(1)}" text-anchor="middle" fill="${c}">${Math.round(v)}°</text>`;
-    return `<div class="tile wide"><div class="tile-h">24-Stunden-Verlauf</div>
-      <svg class="spk" viewBox="0 0 ${W} ${H}">${rb}
-        <path d="${area}" fill="url(#tf)"/>
-        <path d="${line}" fill="none" stroke="url(#ts)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-        ${iMax>0?mark(iMax,tmax,"#f5892f",-6):""}${(iMin>0&&iMin!==iMax)?mark(iMin,tmin,"#4a90d9",12):""}
-        <circle cx="${X(0).toFixed(1)}" cy="${Y(T[0]).toFixed(1)}" r="4" fill="#33a78c" stroke="var(--surface)" stroke-width="1.6"/></svg>
-      <div class="tile-ax"><span>jetzt · ▏Regen</span><span>+24 Std</span></div></div>`;
+    const mark=(k,v,cls)=>`<span class="spk-pt ${cls}" style="${pos(k,v)}"><b>${Math.round(v)}°</b></span>`;
+    let ax=""; rows.forEach((r,k)=>{ if(k===0) ax+=`<span style="left:0">jetzt</span>`;
+      else if(k%3===0&&k<n-1) ax+=`<span class="${k%6?"h3":""}" style="left:${(X(k)/W*100).toFixed(2)}%">${r[0].slice(11,13)}</span>`; });
+    const data=escapeHtml(JSON.stringify(rows.map(r=>[r[0].slice(11,16),Math.round(r[1]*10)/10,Math.round(r[2]),Math.round(r[3]*10)/10])));
+    return `<div class="tile wide"><div class="tile-h spk-head"><span>24-Stunden-Verlauf</span>
+        <span class="spk-leg"><i class="lg-t"></i>Temperatur <i class="lg-r"></i>Regen-Wahrsch. <i class="lg-n"></i>Nacht</span></div>
+      <div class="spk-box" data-spk="${data}" data-min="${tmin}" data-span="${span}">
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${night}${bars}
+          <path d="${area}" fill="url(#tf)"/>
+          <path d="${line}" fill="none" stroke="url(#ts)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>
+        ${iMax>0?mark(iMax,tmax,"max"):""}${(iMin>0&&iMin!==iMax)?mark(iMin,tmin,"min"):""}
+        <span class="spk-pt now" style="${pos(0,T[0])}"><b>${Math.round(T[0])}°</b></span>
+        <div class="spk-cur" hidden><i></i><span></span></div>
+      </div>
+      <div class="spk-ax">${ax}<span style="right:0;left:auto">+24 Std</span></div></div>`;
+  }
+  function wireSpark(box){
+    const rows=JSON.parse(box.dataset.spk), tmin=+box.dataset.min, span=+box.dataset.span, cur=box.querySelector(".spk-cur"),
+          dot=cur.querySelector("i"), lab=cur.querySelector("span"), n=rows.length;
+    const show=e=>{
+      const r=box.getBoundingClientRect(), k=Math.max(0,Math.min(n-1,Math.round((e.clientX-r.left)/r.width*(n-1)))), row=rows[k];
+      const x=k/(n-1)*100, y=14+(1-(row[1]-tmin)/span)*52;
+      cur.hidden=false; cur.style.left=x+"%"; dot.style.top=y+"%";
+      lab.innerHTML=`<b>${row[0]}</b> · ${Math.round(row[1])}° · 💧 ${row[2]} %${row[3]>0?" · "+row[3]+" mm":""}`;
+      lab.style.transform=`translateX(${x>70?"-100%":x<30?"0":"-50%"})`;
+    };
+    box.addEventListener("pointermove",show);
+    box.addEventListener("pointerdown",show);
+    box.addEventListener("pointerleave",()=>{ cur.hidden=true; });
   }
 
   function gaugeTile(fc){
@@ -862,8 +827,8 @@
         <path d="M10 64 Q60 20 110 64" fill="none" stroke="url(#sunA)" stroke-width="2.2"/>
         <line x1="8" y1="64" x2="112" y2="64" stroke="rgba(255,255,255,.15)" stroke-width="1" stroke-dasharray="4 4"/>
         ${up?`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="5" fill="#f0b429"/>`:`<circle cx="${bx.toFixed(1)}" cy="63" r="4" fill="#c9d4e0"/>`}
-        <text class="s-t" x="12" y="76" text-anchor="middle">↑ ${d.sunrise[0].slice(11,16)}</text>
-        <text class="s-t" x="108" y="76" text-anchor="middle">↓ ${d.sunset[0].slice(11,16)}</text></svg></div>`;
+        <text class="s-t" x="3" y="76" text-anchor="start">↑ ${d.sunrise[0].slice(11,16)}</text>
+        <text class="s-t" x="117" y="76" text-anchor="end">↓ ${d.sunset[0].slice(11,16)}</text></svg></div>`;
   }
 
   function tilesHtml(fc){
@@ -941,108 +906,6 @@
 })();
 </script>
 
-<script>
-/* ---------- Warnkarte nach Bundesländern (amtliche DWD-Warnungen) ---------- */
-(function(){
-  "use strict";
-  const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
-  const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
-  const LVCOL=["#3fb56b","#3fb56b","#f4c534","#f5892f","#e5484d"];
-  // Repräsentativer Punkt (Landeshauptstadt) je Bundesland für die DWD-Abfrage
-  const CAPS={"DE-BW":[48.78,9.18],"DE-BY":[48.14,11.58],"DE-BE":[52.52,13.40],"DE-BB":[52.40,13.06],
-    "DE-HB":[53.08,8.80],"DE-HH":[53.55,9.99],"DE-HE":[50.08,8.24],"DE-MV":[53.63,11.42],
-    "DE-NI":[52.37,9.73],"DE-NW":[51.23,6.78],"DE-RP":[50.00,8.27],"DE-SL":[49.24,6.99],
-    "DE-SN":[51.05,13.74],"DE-ST":[52.13,11.63],"DE-SH":[54.32,10.14],"DE-TH":[50.98,11.03]};
-  const cv=document.getElementById("wm-canvas"); if(!cv) return;
-  const ctx=cv.getContext("2d");
-  let feats=null, B, kx, scale, ox, oy, W, H, selected=null;
-  const DPR=Math.max(1,Math.min(2,window.devicePixelRatio||1));
-  const data={};
-
-  const cap=s=>String(s||"").toLowerCase().replace(/(^|[\s/-])([a-zäöü])/g,(m,a,b)=>a+b.toUpperCase());
-  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const hexA=(hex,a)=>{ const n=parseInt(hex.slice(1),16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
-  const polys=g=>g.type==="Polygon"?[g.coordinates]:g.coordinates;
-
-  fetch("map/bundeslaender.geojson").then(r=>r.json()).then(geo=>{
-    feats=geo.features;
-    let minLat=90,maxLat=-90,minLon=180,maxLon=-180;
-    feats.forEach(f=>(function rec(c){ if(typeof c[0]==="number"){minLon=Math.min(minLon,c[0]);maxLon=Math.max(maxLon,c[0]);minLat=Math.min(minLat,c[1]);maxLat=Math.max(maxLat,c[1]);} else c.forEach(rec); })(f.geometry.coordinates));
-    B={minLat,maxLat,minLon,maxLon}; kx=Math.cos((minLat+maxLat)/2*Math.PI/180);
-    document.getElementById("warnmap").hidden=false;
-    resize(); draw();
-    cv.addEventListener("click",onClick);
-    let rt; window.addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(()=>{resize();draw();},150);});
-    loadAlerts();
-  }).catch(()=>{});
-
-  function resize(){
-    W=cv.clientWidth||cv.parentElement.clientWidth||300;
-    const gw=(B.maxLon-B.minLon)*kx, gh=(B.maxLat-B.minLat);
-    H=Math.round(W*(gh/gw)); cv.style.height=H+"px";
-    cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
-    const pad=6; scale=Math.min((W-2*pad)/gw,(H-2*pad)/gh); ox=(W-gw*scale)/2; oy=(H-gh*scale)/2;
-  }
-  function px(lon,lat){ return [ox+((lon-B.minLon)*kx)*scale, oy+((B.maxLat-lat))*scale]; }
-  function tracePath(geom){
-    ctx.beginPath();
-    polys(geom).forEach(poly=>{ poly[0].forEach((c,i)=>{const p=px(c[0],c[1]); i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]);}); ctx.closePath(); });
-  }
-  function draw(){
-    if(!feats) return;
-    ctx.clearRect(0,0,W,H);
-    feats.forEach(f=>{
-      const d=data[f.properties.id], lv=d?d.level:0, sel=selected===f.properties.id;
-      tracePath(f.geometry);
-      ctx.fillStyle=lv>=2?hexA(LVCOL[lv],0.55):"rgba(157,189,208,0.05)"; ctx.fill();
-      ctx.lineWidth=sel?2.2:1; ctx.strokeStyle=sel?"#43d3ad":"rgba(157,189,208,0.35)"; ctx.stroke();
-    });
-  }
-  function inRing(lon,lat,ring){ let ins=false; for(let i=0,j=ring.length-1;i<ring.length;j=i++){const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1]; if(((yi>lat)!==(yj>lat))&&(lon<(xj-xi)*(lat-yi)/(yj-yi)+xi)) ins=!ins;} return ins; }
-  function inState(lon,lat,geom){ return polys(geom).some(p=>inRing(lon,lat,p[0])); }
-  function onClick(e){
-    const r=cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
-    const lon=B.minLon+(x-ox)/(scale*kx), lat=B.maxLat-(y-oy)/scale;
-    const f=feats.find(f=>inState(lon,lat,f.geometry)); if(!f) return;
-    selected=f.properties.id; draw(); showDetail(f.properties.id);
-  }
-  function showDetail(id){
-    const f=feats.find(f=>f.properties.id===id), d=data[id], det=document.getElementById("wm-detail");
-    if(!f) return;
-    if(!d){ det.innerHTML=`<b>${esc(f.properties.name)}</b>: lädt…`; return; }
-    if(!d.items.length){ det.innerHTML=`<b>${esc(f.properties.name)}</b>: keine amtliche Warnung.`; return; }
-    det.innerHTML=`<b>${esc(f.properties.name)}</b> — `+d.items.map(it=>`${esc(cap(it.event))} <em>(${SEV_LABEL[it.sev]||"Warnung"})</em>`).join("; ");
-  }
-  async function loadAlerts(){
-    const KEY="selfstorm.wm.v1";
-    try{ const c=JSON.parse(sessionStorage.getItem(KEY)||"null"); if(c&&Date.now()-c.t<600000){ Object.assign(data,c.d); draw(); renderList(); return; } }catch(e){}
-    await Promise.all(feats.map(async f=>{
-      const id=f.properties.id, cc=CAPS[id];
-      if(!cc){ data[id]={id,level:0,items:[],name:f.properties.name}; return; }
-      try{
-        const r=await fetch(`https://api.brightsky.dev/alerts?lat=${cc[0]}&lon=${cc[1]}&tz=Europe/Berlin`);
-        const j=await r.json();
-        const items=(j.alerts||[]).map(x=>({event:x.event_de||x.event_en||"Warnung",sev:x.severity}));
-        data[id]={id,level:items.reduce((m,i)=>Math.max(m,SEVLV[i.sev]||2),0),items,name:f.properties.name};
-      }catch(e){ data[id]={id,level:0,items:[],name:f.properties.name}; }
-    }));
-    try{ sessionStorage.setItem(KEY,JSON.stringify({t:Date.now(),d:data})); }catch(e){}
-    draw(); renderList();
-  }
-  function renderList(){
-    const box=document.getElementById("wm-list");
-    const warned=feats.map(f=>data[f.properties.id]).filter(d=>d&&d.level>=2).sort((a,b)=>b.level-a.level);
-    let html=`<h3>Aktuelle Meldungen</h3>`;
-    if(!warned.length) html+=`<div class="wm-empty">Aktuell keine amtlichen Warnungen.</div>`;
-    else html+=warned.map(d=>{
-      const ev=[...new Set(d.items.map(i=>cap(i.event)))].slice(0,2).join(", ");
-      return `<div class="wm-row" data-id="${d.id}"><span class="sq" style="background:${LVCOL[d.level]}"></span><span><span class="st">${esc(d.name)}</span><br><span class="wm-ev">${esc(ev)}</span></span></div>`;
-    }).join("");
-    box.innerHTML=html;
-    box.querySelectorAll(".wm-row").forEach(row=>row.onclick=()=>{ selected=row.getAttribute("data-id"); draw(); showDetail(selected); });
-  }
-})();
-</script>
-<script src="map/timelapse.js"></script>
+<script src="map/dekarte.js"></script>
 </body>
 </html>
