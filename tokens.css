@@ -75,9 +75,41 @@
 }
 
 /* ============================================================
-   LIGHT THEME — auf <html data-theme="light"> aktivieren.
+   LIGHT THEME — zwei Wege zur Aktivierung:
+   1. Automatisch, wenn das Betriebssystem/der Browser Light Mode
+      bevorzugt (prefers-color-scheme: light) und die Seite nicht
+      explizit auf data-theme="dark" gepinnt wurde.
+   2. Manuell/erzwungen über <html data-theme="light"> (z. B. für
+      einen künftigen Theme-Umschalter im UI).
    Übernommen aus dem Selfstream-Dashboard.
    ============================================================ */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme="dark"]) {
+    --self-bg-0: #eef1f6;
+    --self-bg-1: #ffffff;
+    --self-bg-2: #ffffff;
+    --self-bg-3: #f1f4f8;
+
+    --self-line: #d6dde6;
+    --self-line-strong: #c2cbd6;
+
+    --self-teal: #0a9d8c;
+    --self-teal-bright: #0a9d8c;
+    --self-cyan: #0a9d8c;
+    --self-blue: #1184c9;
+
+    --self-green: #1f9d3f;
+    --self-red: #d83a30;
+    --self-yellow: #a8780f;
+
+    --self-text: #1a2230;
+    --self-text-2: #5b6776;
+    --self-text-3: #9aa5b1;
+
+    color-scheme: light;
+  }
+}
+
 html[data-theme="light"] {
   --self-bg-0: #eef1f6;
   --self-bg-1: #ffffff;

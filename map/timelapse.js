@@ -23,10 +23,17 @@
     B=g.bbox; kx=Math.cos(((B.minLat+B.maxLat)/2)*Math.PI/180);
     const sl=$("tl-slider"); if(sl) sl.max=String(g.hours.length-1);
     idx=nowIndex(g.hours); if(sl) sl.value=String(idx);
+    const gen=$("tl-generated"); if(gen) gen.textContent=fmtGenerated(g.generated);
     const ld=$("tl-loading"); if(ld) ld.hidden=true;
     cv.hidden=false; resize(); draw(); wire();
   }).catch(()=>{ const ld=$("tl-loading"); if(ld) ld.textContent="Karte konnte nicht geladen werden."; });
 
+  function fmtGenerated(g){
+    if(!g) return "Stand unbekannt";
+    const d=new Date(g+"Z");
+    if(isNaN(d.getTime())) return "Stand unbekannt";
+    return "Raster-Stand: "+WD[d.getDay()]+" "+d.toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})+" Uhr UTC";
+  }
   function nowIndex(hours){ const now=Date.now(); let b=0; for(let i=0;i<hours.length;i++){ if(new Date(hours[i]+"Z").getTime()<=now) b=i; else break; } return b; }
   function resize(){
     W=cv.clientWidth||cv.parentElement.clientWidth||300;

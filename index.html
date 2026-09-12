@@ -148,51 +148,34 @@
     background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
     box-shadow:var(--shadow);overflow:hidden;position:relative;
   }
-  .card-head{display:flex;align-items:flex-start;gap:14px;padding:18px 18px 14px}
-  .lamp{
-    width:16px;height:16px;border-radius:50%;flex:none;margin-top:5px;position:relative;
-  }
-  .lamp::after{content:"";position:absolute;inset:-6px;border-radius:50%;opacity:.5;filter:blur(6px);background:inherit}
-  .lv-0 .lamp,.lv-1 .lamp{background:var(--green)}
-  .lv-2 .lamp{background:var(--yellow)}
-  .lv-3 .lamp{background:var(--orange)}
-  .lv-4 .lamp{background:var(--red);animation:pulse 1.6s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
-  @media (prefers-reduced-motion:reduce){.lv-4 .lamp{animation:none}}
+  .card-head{display:flex;align-items:center;gap:16px;padding:18px 18px 14px}
+  /* Hero: Risiko-Ring + Gefahren-Chips + Vertrauens-Zeile (Redesign) */
+  .ring-wrap{position:relative;width:92px;height:92px;flex:none}
+  .ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:9}
+  .ring-fg{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .6s var(--ease)}
+  .ring-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-num b{font-size:1.85rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .ring-num span{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
   .loc-main{flex:1;min-width:0}
   .loc-name{font-weight:700;font-size:1.12rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .loc-sub{color:var(--muted);font-size:.85rem;margin-top:2px}
-  .verdict{margin-top:9px;font-size:.98rem}
-  .badge{
-    display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-    padding:4px 9px;border-radius:7px;border:1px solid transparent;
+  .rchip{
+    font-size:.78rem;font-weight:600;padding:5px 11px;border-radius:999px;
+    border:1px solid transparent;display:inline-flex;align-items:center;gap:5px;
   }
-  .lv-0 .badge,.lv-1 .badge{color:#7ff0b0;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3)}
-  .lv-2 .badge{color:#f7d774;background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.34)}
-  .lv-3 .badge{color:#fdba74;background:rgba(249,115,22,.14);border-color:rgba(249,115,22,.36)}
-  .lv-4 .badge{color:#fca5a5;background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4)}
+  .rchip.high{color:#fdba74;background:rgba(249,115,22,.14);border-color:rgba(249,115,22,.36)}
+  .rchip.mid{color:#f7d774;background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.34)}
+  .rchip.ok{color:#7ff0b0;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3)}
+  .trust{margin-top:12px;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .trust b{color:var(--text);font-weight:600}
+  .trust .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex:none}
+  .verdict{margin-top:9px;font-size:.98rem}
   .remove{
     position:absolute;top:12px;right:12px;background:transparent;border:0;color:#5f6f85;
     cursor:pointer;font-size:1.1rem;line-height:1;padding:6px;border-radius:8px;transition:color .2s,background .2s;
   }
   .remove:hover{color:var(--red);background:rgba(239,68,68,.1)}
-
-  /* timeline / days */
-  .days{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
-    border-top:1px solid var(--border);margin-top:4px}
-  .day{background:var(--bg-2);padding:12px 14px;min-height:96px}
-  .day-h{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-  .ev{font-size:.86rem;display:flex;gap:7px;align-items:baseline;margin:5px 0}
-  .ev .t{color:var(--muted);flex:none;width:44px;font-variant-numeric:tabular-nums}
-  .ev .d-0,.ev .d-1{color:var(--green)}
-  .ev .d-2{color:var(--yellow)}.ev .d-3{color:var(--orange)}.ev .d-4{color:var(--red)}
-  .calm{color:#5f6f85;font-size:.84rem;font-style:italic}
-  .consensus{padding:11px 18px;border-top:1px solid var(--border);font-size:.85rem;color:var(--muted);
-    display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .consensus b{color:var(--text);font-weight:600}
-  .meter{display:inline-flex;gap:3px}
-  .meter i{width:16px;height:6px;border-radius:3px;background:rgba(255,255,255,.14)}
-  .meter i.on{background:var(--orange)}
 
   .dwd{border-top:1px solid var(--border);padding:13px 18px;background:color-mix(in srgb, var(--red) 8%, transparent)}
   .dwd-h{font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:#fca5a5;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:6px}
@@ -213,19 +196,44 @@
   .nc-msg{font-weight:600;font-size:.92rem;white-space:nowrap}
   .nc-svg{height:30px;flex:1;min-width:60px}
   .nc-ax{display:flex;flex-direction:column;font-size:.66rem;color:var(--muted);gap:12px;text-align:right;white-space:nowrap}
-  /* Detail-Kacheln */
-  .tiles{padding:14px 18px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:12px}
-  .tile{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:12px;padding:11px 12px}
-  .tile-h{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}
-  .tile.wide .spk{width:100%;height:auto;display:block}
+  /* Risikoverlauf: Farbverlaufsband ueber 3 Tage (Redesign) */
+  .trend{padding:4px 18px 14px}
+  .trend-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .trend svg{width:100%;height:64px;display:block}
+  .daymarks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:6px}
+
+  /* "Details anzeigen" — Umschalter + zusatzliche Zahlenangaben */
+  .det-toggle{
+    display:inline-flex;align-items:center;gap:7px;margin-top:12px;cursor:pointer;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+    border-radius:999px;padding:5px 13px;font-size:.78rem;font-weight:600;
+    transition:border-color .2s var(--ease),color .2s var(--ease);
+  }
+  .det-toggle:hover{border-color:var(--teal);color:var(--text)}
+  .det-toggle .sw{width:26px;height:15px;border-radius:999px;background:rgba(255,255,255,.16);position:relative;transition:background .2s var(--ease)}
+  .det-toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#8a9caa;transition:transform .2s var(--ease),background .2s}
+  .det-toggle[aria-pressed="true"] .sw{background:var(--teal)}
+  .det-toggle[aria-pressed="true"] .sw::after{transform:translateX(11px);background:#05110d}
+  .details{padding:12px 18px;border-top:1px solid var(--border);font-size:.84rem;line-height:1.65}
+  .details .det-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px;margin-top:8px}
+  .details .det-item{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:10px;padding:8px 11px}
+  .details .det-h{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
+  .details .det-v{font-weight:700;font-variant-numeric:tabular-nums;font-size:.95rem}
+  .details .det-s{font-size:.72rem;color:var(--muted);margin-top:2px}
+
+  /* Detail-Kacheln (dezent, ueberschaubar) */
+  .tiles{padding:12px 18px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+  .tile{background:rgba(0,0,0,.10);border:1px solid var(--border);border-radius:12px;padding:9px 12px}
+  .tile-h{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
+  .tile.wide .spk{width:100%;height:auto;display:block;max-height:70px}
   .tile-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
   .tile-ax{display:flex;justify-content:space-between;font-size:.66rem;color:var(--muted);margin-top:4px}
-  .gauge,.sun{width:100%;height:auto;max-height:100px;display:block}
+  .gauge,.sun{width:100%;height:auto;max-height:84px;display:block}
   .g-num{fill:var(--text);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
   .g-u{fill:var(--muted);font-size:9px}
   .s-t{fill:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
   .spk-n{font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
-  .feel-n{font-size:1.7rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
+  .feel-n{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
   .feel-s{font-size:.72rem;color:var(--muted);margin-top:4px}
   .tile.mini{display:flex;flex-direction:column;justify-content:center}
 
@@ -334,6 +342,7 @@
       <span><i style="background:var(--orange)"></i> Warnung</span>
       <span><i style="background:var(--red)"></i> Unwetter</span>
     </div>
+    <div class="wm-sub" id="tl-generated" style="text-align:center;margin-top:8px"></div>
   </section>
   </div><!-- /overview -->
 
@@ -527,8 +536,22 @@
     if(/Gewitter|Hagel/.test(label) && v.cape>=800) return "CAPE "+Math.round(v.cape);
     return "";
   }
+  // Gefahren-Gruppen fuer die Chips (Redesign)
+  const HAZ_GROUP={
+    "Hagel":"gth","Gewitter":"gth","Hagel möglich":"gth","Gewitter möglich":"gth",
+    "Orkanböen":"wind","Sturmböen":"wind","Windböen":"wind",
+    "Starkregen":"rain","kräftiger Regen":"rain",
+    "starke Hitze":"heat","Hitze":"heat",
+    "Glatteis":"frost","Glättegefahr":"frost","strenger Frost":"frost","Frost":"frost",
+    "starker Schneefall":"snow","Schneefall":"snow",
+    "dichter Nebel":"fog","Nebel":"fog"
+  };
+  const GROUP_NAME={gth:"⛈ Gewitter & Hagel",wind:"🌬 Sturm",rain:"💧 Starkregen",
+                    heat:"🌡 Hitze",frost:"🧊 Frost & Glätte",snow:"❄ Schnee",fog:"🌫 Nebel"};
   function analyze(fc){
-    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, peakLabel:"", tags:new Set()};
+    const h=fc.hourly, t=h.time, out={events:[], peak:0, peakTime:null, peakLabel:"",
+      tags:new Set(), groupLv:new Map(), hourlyRisk:[], maxGust:0, maxCape:0, maxPr1h:0,
+      maxTemp:0, minTemp:Infinity, minVis:Infinity};
     for(let i=0;i<t.length;i++){
       const code=h.weather_code[i], cape=num(h.cape[i]), gust=num(h.wind_gusts_10m[i]),
             pr=num(h.precipitation[i]), temp=num(h.temperature_2m&&h.temperature_2m[i]),
@@ -544,13 +567,47 @@
       if(temp<=-10) hits.push([3,"strenger Frost"]); else if(temp<=-5) hits.push([2,"Frost"]);
       if(snow>=5||code===75||code===86) hits.push([3,"starker Schneefall"]); else if(snow>=1||code===71||code===73||code===85) hits.push([2,"Schneefall"]);
       if(vis>0&&vis<200) hits.push([3,"dichter Nebel"]); else if(vis>0&&vis<1000) hits.push([2,"Nebel"]); else if(vis<=0&&(code===45||code===48)) hits.push([2,"Nebel"]);
+      // kontinuierliche Risikostufe 0..1 fuer das Verlaufsband
+      const risk=Math.min(1, Math.max(
+        cape/2500, gust/110, pr/18,
+        temp>=28?(temp-28)/12:0, snow/12,
+        vis>0&&vis<1000?(1000-vis)/900:0
+      ));
+      out.hourlyRisk.push(risk);
+      if(gust>out.maxGust) out.maxGust=gust;
+      if(cape>out.maxCape) out.maxCape=cape;
+      if(pr>out.maxPr1h) out.maxPr1h=pr;
+      if(temp>out.maxTemp) out.maxTemp=temp;
+      if(temp<out.minTemp) out.minTemp=temp;
+      if(vis>0&&vis<out.minVis) out.minVis=vis;
       if(!hits.length) continue;
       hits.sort((a,b)=>b[0]-a[0]);
       const lv=hits[0][0], label=hits[0][1];
-      if(lv>=2){ out.events.push({time:t[i], lv, label, detail:detailFor(label,{cape,temp,snow,vis})}); hits.forEach(x=>out.tags.add(x[1])); }
+      hits.forEach(x=>{
+        out.tags.add(x[1]);
+        const g=HAZ_GROUP[x[1]];
+        if(g){ const cur=out.groupLv.get(g)||0; if(x[0]>cur) out.groupLv.set(g,x[0]); }
+      });
+      if(lv>=2){ out.events.push({time:t[i], lv, label, detail:detailFor(label,{cape,temp,snow,vis})}); }
       if(lv>out.peak){ out.peak=lv; out.peakTime=t[i]; out.peakLabel=label; }
     }
+    if(!isFinite(out.minTemp)) out.minTemp=0; if(!isFinite(out.minVis)) out.minVis=0;
+    out.score=riskScore(out);
     return out;
+  }
+  // Risikoscore 0..100 aus echten Werten (Peak-Stufe + Boen + CAPE + Starkregen)
+  function riskScore(a){
+    let s=[0,8,38,62,84][a.peak];
+    s+=Math.min(10,(a.maxGust-30)/6);
+    s+=Math.min(8,a.maxCape/400);
+    s+=Math.min(8,a.maxPr1h/2);
+    return Math.round(Math.min(100,Math.max(0,s)));
+  }
+  function scoreColor(score,lv){
+    if(lv>=4||score>=75) return "var(--red)";
+    if(lv>=3||score>=55) return "var(--orange)";
+    if(lv>=2||score>=35) return "var(--yellow)";
+    return "var(--green)";
   }
 
   function verdictText(a){
@@ -625,52 +682,125 @@
       ? `Amtliche Warnung: ${escapeHtml(cap(dwd.items[0].event))} — Details unten.`
       : verdictText(a);
     el.className="card lv-"+lvl;
-    el.innerHTML=cardHeadHtml(loc, lvl, verdict)+nowcastHtml(fc)+dwdHtml(dwd)+daysHtml(a)+consensusHtml(con)+tilesHtml(fc);
+    el.innerHTML=cardHeadHtml(loc, lvl, verdict, a, con, dwd)+nowcastHtml(fc)+dwdHtml(dwd)
+      +trendHtml(a, fc, loc)+detailsHtml(fc, a)+tilesHtml(fc);
     attachRemove(el,loc);
+    const tg=el.querySelector("[data-det]");
+    if(tg) tg.onclick=()=>{
+      const open=tg.getAttribute("aria-pressed")==="true";
+      tg.setAttribute("aria-pressed",String(!open));
+      const dd=el.querySelector(".details"); if(dd) dd.hidden=open;
+    };
   }
 
-  function cardHeadHtml(loc, lv, verdict){
-    const label=["Ruhig","Ruhig","Beobachten","Warnung","Unwetter"][lv];
+  function ringHtml(score, color){
+    const C=263.9, off=(C*(1-Math.min(100,Math.max(0,score))/100)).toFixed(1);
+    return `<div class="ring-wrap">
+      <svg viewBox="0 0 100 100">
+        <circle class="ring-bg" cx="50" cy="50" r="42"></circle>
+        <circle class="ring-fg" cx="50" cy="50" r="42" stroke="${color}"
+          stroke-dasharray="${C}" stroke-dashoffset="${off}"></circle>
+      </svg>
+      <div class="ring-num"><b>${Math.round(score)}</b><span>Risiko</span></div>
+    </div>`;
+  }
+
+  function chipsHtml(a){
+    const groups=[...a.groupLv.entries()].sort((x,y)=>y[1]-x[1]);
+    const inner=groups.length
+      ? groups.map(([g,glv])=>`<span class="rchip ${glv>=3?"high":"mid"}">${GROUP_NAME[g]||escapeHtml(g)}</span>`).join("")
+      : `<span class="rchip ok">🌤 Ruhig</span>`;
+    return `<div class="chips" style="margin-top:10px">${inner}</div>`;
+  }
+
+  function trustHtml(con, dwd){
+    const hasDwd=dwd&&dwd.items&&dwd.items.length>0;
+    let confTxt="", modelTxt;
+    if(!con||!con.total) modelTxt="Modell-Vergleich nicht verfügbar";
+    else {
+      const strong=con.warn===0||con.warn===con.total;
+      confTxt=strong?"hoch":"mittel";
+      modelTxt=con.warn===0
+        ? `keines der ${con.total} Modelle sieht Gewitter`
+        : con.warn===con.total
+          ? `alle ${con.total} Modelle sehen Gewitter`
+          : `${con.warn} von ${con.total} Modellen sehen Gewitter`;
+      if(con.warn>0&&con.day) modelTxt+=` (ab ${fmtWhen(con.day)})`;
+    }
+    return `<div class="trust"><span class="dot"></span>`
+      +(confTxt?`<b>Vertrauen: ${confTxt}</b> · `:"")
+      +modelTxt+` · ${hasDwd?"amtliche Warnung liegt vor":"keine amtliche Warnung"}</div>`;
+  }
+
+  function cardHeadHtml(loc, lv, verdict, a, con, dwd){
+    const score=a?a.score:0, col=a?scoreColor(score,lv):"var(--green)";
     return `<button class="remove" title="Ort entfernen" data-x>✕</button>
       <div class="card-head">
-        <span class="lamp"></span>
+        ${ringHtml(score,col)}
         <div class="loc-main">
-          <div class="loc-name">${escapeHtml(loc.name)} <span class="badge">${label}</span></div>
+          <div class="loc-name">${escapeHtml(loc.name)}</div>
           <div class="loc-sub">${escapeHtml(loc.sub||"")}</div>
-          <div class="verdict">${verdict}</div>
+          ${a?chipsHtml(a)+trustHtml(con,dwd)+`<div class="verdict">${verdict}</div>
+            <button class="det-toggle" data-det aria-pressed="false"><span class="sw"></span> Details anzeigen</button>`
+            :`<div class="verdict">${verdict}</div>`}
         </div>
       </div>`;
   }
 
-  function daysHtml(a){
-    const byDay={};
-    a.events.forEach(e=>{ const d=e.time.slice(0,10); (byDay[d]=byDay[d]||[]).push(e); });
-    const days=Object.keys(byDay).sort().slice(0,3);
-    // ensure we always show 3 day columns based on peak spread; fallback to next 3 dates
-    let cols=days;
-    if(cols.length<3){
-      const base=a.events[0]?a.events[0].time.slice(0,10):new Date().toISOString().slice(0,10);
-      cols=[]; const d0=new Date(base+"T12:00");
-      for(let i=0;i<3;i++){ const d=new Date(d0); d.setDate(d0.getDate()+i); cols.push(d.toISOString().slice(0,10)); }
-    }
-    return `<div class="days">`+cols.map(d=>{
-      const evs=(byDay[d]||[]).slice(0,4);
-      const head=fmtDay(d);
-      const body=evs.length? evs.map(e=>{
-        return `<div class="ev"><span class="t">${fmtHour(e.time)}</span><span class="d-${e.lv}">${e.label}${e.detail?` · ${e.detail}`:""}</span></div>`;
-      }).join("") : `<div class="calm">ruhig</div>`;
-      return `<div class="day"><div class="day-h">${head}</div>${body}</div>`;
-    }).join("")+`</div>`;
+  // Risikoverlauf als Farbverlaufsband ueber 3 Tage (statt Tagesraster)
+  function trendHtml(a, fc, loc){
+    const h=fc&&fc.hourly; if(!h||!h.time||!a.hourlyRisk.length) return "";
+    const i0=nowIndex(h.time), N=a.hourlyRisk.length-i0, step=Math.max(1,Math.floor(N/96));
+    const pts=[];
+    for(let k=0;k<=N;k+=step){ const i=Math.min(N-1,k); pts.push(a.hourlyRisk[i]); }
+    const W=400,H=64;
+    const X=k=>k/(pts.length-1)*W, Y=v=>H-6-v*(H-16);
+    const line=smoothPath(pts.map((v,k)=>[X(k),Y(v)]));
+    const area=line+` L${X(pts.length-1).toFixed(1)},${H} L0,${H} Z`;
+    // Farbverlauf entlang des Bands: Farbe folgt der Risikohoehe je Tagesdrittel
+    const third=i=>{ const s=Math.floor(pts.length*i/3), e=Math.max(s+1,Math.floor(pts.length*(i+1)/3));
+      let m=0; for(let k=s;k<e;k++) m=Math.max(m,pts[k]); return m; };
+    const col=r=> r<.2?"#3fb56b" : r<.45?"#f4c534" : r<.7?"#f5892f" : "#e5484d";
+    const c0=col(third(0)), c1=col(third(1)), c2=col(third(2)), gm="tg-"+cssId(loc);
+    const peakLbl=a.peakTime?("Spitze: "+fmtWhen(a.peakTime)):(a.peak<=1?"durchgehend ruhig":"");
+    return `<div class="trend">
+      <div class="trend-label"><span>Risiko-Verlauf · nächste 3 Tage</span><span>${peakLbl}</span></div>
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="${gm}-a" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="${c1}" stop-opacity=".3"/><stop offset="1" stop-color="${c1}" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="${gm}" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="${c0}"/><stop offset=".5" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/>
+          </linearGradient>
+        </defs>
+        <path d="${area}" fill="url(#${gm}-a)"/>
+        <path d="${line}" fill="none" stroke="url(#${gm})" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div class="daymarks"><span>Heute</span><span>Morgen</span><span>Übermorgen</span></div>
+    </div>`;
   }
 
-  function consensusHtml(con){
-    if(!con || !con.total) return "";
-    const on=con.warn, tot=con.total;
-    let bars=""; for(let i=0;i<tot;i++){ bars+=`<i class="${i<on?"on":""}"></i>`; }
-    const txt = on===0
-      ? `Gewitter-Konsens: <b>kein</b> Modell sieht Gewitter.`
-      : `Gewitter-Konsens: <b>${on} von ${tot}</b> Modellen${con.day?` (ab ${fmtWhen(con.day)})`:""}.`;
-    return `<div class="consensus"><span class="meter">${bars}</span> ${txt}</div>`;
+  // Zusätzliche genaue Zahlenangaben (nur via "Details anzeigen")
+  function detailsHtml(fc, a){
+    const d=fc&&fc.daily, c=fc&&fc.current;
+    const r1=v=>(v==null||isNaN(v))?"—":Math.round(v);
+    const items=[
+      ["Boen", r1(a.maxGust)+" km/h", "max. in 3 Tagen"],
+      ["Niederschlag", r1(a.maxPr1h)+" mm", "stärkste Stunde"],
+      ["Regen gesamt (3 T.)", (d&&d.precipitation_sum)?r1(d.precipitation_sum[0]+d.precipitation_sum[1]+d.precipitation_sum[2])+" mm":"—",""],
+      ["Regenwahrsch. (3 T.)", (d&&d.precipitation_probability_max)?r1(Math.max(d.precipitation_probability_max[0]||0,d.precipitation_probability_max[1]||0,d.precipitation_probability_max[2]||0))+" %":"—",""],
+      ["CAPE", r1(a.maxCape)+" J/kg", "max. Gewitter-Energie"],
+      ["Temperatur", r1(a.maxTemp)+"° / "+r1(a.minTemp)+"°", "max / min in 3 Tagen"],
+      ["Sicht", a.minVis>0?("ab "+r1(a.minVis)+" m"):"gut","min. in 3 Tagen"],
+      ["Aktuell", c?(r1(c.temperature_2m)+"° · "+r1(c.relative_humidity_2m)+"% Feuchte"):"—",""]
+    ];
+    return `<div class="details" hidden>
+      <div class="det-h" style="margin:0">Genauere Angaben</div>
+      <div class="det-grid">
+        ${items.map(it=>`<div class="det-item"><div class="det-h">${it[0]}</div><div class="det-v">${it[1]}</div>${it[2]?`<div class="det-s">${it[2]}</div>`:""}</div>`).join("")}
+      </div>
+    </div>`;
   }
 
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
