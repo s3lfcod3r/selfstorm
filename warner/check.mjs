@@ -68,6 +68,19 @@ async function sendMail(subject, text) {
   console.log("E-Mail gesendet an", MAIL_TO);
 }
 
+// Open-Meteo liefert stündlich ab 00:00 des Tages. Stunden vor der aktuellen Stunde
+// (Ortszeit des Orts laut utc_offset_seconds) zählen für den Alarm nicht mehr.
+function upcomingHours(fc, nowMs = Date.now()) {
+  const h = fc.hourly;
+  if (!h || !Array.isArray(h.time)) return fc;
+  const nowHour = new Date(nowMs + (fc.utc_offset_seconds || 0) * 1000).toISOString().slice(0, 13); // "YYYY-MM-DDTHH"
+  let from = h.time.findIndex(t => String(t).slice(0, 13) >= nowHour);
+  if (from < 0) from = h.time.length;
+  const hourly = {};
+  for (const [k, v] of Object.entries(h)) hourly[k] = Array.isArray(v) ? v.slice(from) : v;
+  return { ...fc, hourly };
+}
+
 const todayStr = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Berlin" });
 const threshold = cfg.notifyLevel || 3;
 let changed = false;
@@ -87,7 +100,7 @@ for (const loc of cfg.locations) {
   } catch (e) { console.error("Wetter-Abruf fehlgeschlagen für", loc.name, e.message); }
 
   // Vorhersage weg: Ort NICHT überspringen — die amtliche DWD-Ebene wird trotzdem geprüft.
-  const a = fc ? analyze(fc) : { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set(), unknown: true };
+  const a = fc ? analyze(upcomingHours(fc)) : { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set(), unknown: true };
   const dwd = await fetchDwd(loc);
   const peak = Math.max(a.peak, dwd.level);
   const key = `${loc.lat},${loc.lon}`;
