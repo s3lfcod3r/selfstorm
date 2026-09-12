@@ -114,8 +114,12 @@
   .ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:9}
   .ring-fg{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .6s var(--ease)}
   .ring-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-  .ring-num b{font-size:1.85rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-  .ring-num span{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  .ring-num b{font-size:.74rem;font-weight:800;line-height:1.05;text-align:center;padding:0 4px;letter-spacing:-.01em;text-transform:uppercase}
+  .ring-num span{font-size:.66rem;color:var(--muted);margin-top:3px;font-variant-numeric:tabular-nums}
+  .now-line{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:7px}
+  .now-temp{font-size:1.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .now-wx{font-size:.95rem;font-weight:600}
+  .now-x{font-size:.82rem;color:var(--muted);white-space:nowrap}
   .loc-main{flex:1;min-width:0}
   .loc-name{font-weight:700;font-size:1.12rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .loc-sub{color:var(--muted);font-size:.85rem;margin-top:2px}
@@ -129,14 +133,14 @@
   .trust{margin-top:12px;font-size:.8rem;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
   .trust b{color:var(--text);font-weight:600}
   .trust .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);flex:none}
-  .verdict{margin-top:9px;font-size:.98rem}
+  .verdict{margin-top:9px;font-size:.95rem;color:var(--text)}
   .remove{
     position:absolute;top:12px;right:12px;background:transparent;border:0;color:#5f6f85;
     cursor:pointer;font-size:1.1rem;line-height:1;padding:6px;border-radius:8px;transition:color .2s,background .2s;
   }
   .remove:hover{color:var(--red);background:rgba(239,68,68,.1)}
 
-  .dwd{border-top:1px solid var(--border);padding:13px 18px;background:color-mix(in srgb, var(--red) 8%, transparent)}
+  .dwd{border-bottom:1px solid var(--border);padding:13px 18px;background:color-mix(in srgb, var(--red) 8%, transparent)}
   .dwd-h{font-size:.76rem;text-transform:uppercase;letter-spacing:.05em;color:#fca5a5;font-weight:700;margin-bottom:9px;display:flex;align-items:center;gap:6px}
   .dwd-h::before{content:"⚠"}
   .dwd-item{padding:9px 0;border-top:1px dashed var(--border)}
@@ -149,34 +153,39 @@
   .dwd-time{color:var(--muted);font-size:.82rem;margin-top:3px}
   .dwd-instr{color:var(--text);font-size:.85rem;margin-top:6px;line-height:1.5}
 
+  /* Abschnitte: ruhige Trennlinien statt verschachtelter Rahmen */
+  .sec{padding:14px 18px 16px;border-top:1px solid var(--border)}
+  .sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;
+    font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px}
+  .sec-h>span:last-child{text-transform:none;letter-spacing:0;font-size:.72rem}
+
   /* Nowcast (Regen in X Min) */
   .nowcast{padding:11px 18px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px}
   .nowcast.dry{color:var(--muted);font-size:.9rem}
   .nc-msg{font-weight:600;font-size:.92rem;white-space:nowrap}
   .nc-svg{height:30px;flex:1;min-width:60px}
   .nc-ax{display:flex;flex-direction:column;font-size:.66rem;color:var(--muted);gap:12px;text-align:right;white-space:nowrap}
-  /* Risikoverlauf: Farbverlaufsband ueber 3 Tage (Redesign) */
-  .trend{padding:4px 18px 14px}
-  .trend-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  /* Ausblick: drei Fenster + Risikoverlauf */
   .trend-box{position:relative;height:64px;touch-action:pan-y;cursor:crosshair}
   .trend-box svg{width:100%;height:64px;display:block}
   .trend-box .spk-cur span{top:-20px}
   .trend-ax{position:relative;height:16px;margin-top:6px;font-size:.7rem;color:var(--muted)}
   .trend-ax span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-  .outlook{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:2px 0 14px}
-  .ol-item{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:11px;padding:9px 11px}
-  .ol-h{font-size:.72rem;font-weight:700;color:var(--text);display:flex;flex-direction:column;line-height:1.3}
-  .ol-h small{font-weight:400;color:var(--muted);font-size:.66rem}
-  .ol-row{display:flex;align-items:center;gap:8px;margin:5px 0 3px}
-  .ol-score{font-size:1.45rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;min-width:2ch}
+  .outlook{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:0 0 16px}
+  .ol-item{position:relative}
+  .ol-item+.ol-item{padding-left:18px;border-left:1px solid var(--border)}
+  .ol-h{font-size:.74rem;font-weight:600;color:var(--muted)}
+  .ol-row{display:flex;align-items:center;gap:8px;margin:4px 0 3px}
+  .ol-score{font-size:1.5rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;min-width:2ch}
   .ol-bar{flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
   .ol-bar i{display:block;height:100%;border-radius:999px}
   .ol-s{font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  @media(max-width:520px){.outlook{gap:6px}.ol-item{padding:8px}.ol-score{font-size:1.15rem}.ol-h small{display:none}.ol-s{white-space:normal}}
+  @media(max-width:520px){.outlook{gap:10px}.ol-item+.ol-item{padding-left:10px}.ol-score{font-size:1.2rem}.ol-s{white-space:normal;font-size:.7rem}}
 
   /* "Details anzeigen" — Umschalter + zusatzliche Zahlenangaben */
+  .det-foot{padding:12px 18px 16px;border-top:1px solid var(--border);background:rgba(0,0,0,.10)}
   .det-toggle{
-    display:inline-flex;align-items:center;gap:7px;margin-top:12px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;cursor:pointer;
     background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
     border-radius:999px;padding:5px 13px;font-size:.78rem;font-weight:600;
     transition:border-color .2s var(--ease),color .2s var(--ease);
@@ -186,24 +195,32 @@
   .det-toggle .sw::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#8a9caa;transition:transform .2s var(--ease),background .2s}
   .det-toggle[aria-pressed="true"] .sw{background:var(--teal)}
   .det-toggle[aria-pressed="true"] .sw::after{transform:translateX(11px);background:#05110d}
-  .details{padding:12px 18px;border-top:1px solid var(--border);font-size:.84rem;line-height:1.65}
-  .details .det-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px;margin-top:8px}
-  .details .det-item{background:rgba(0,0,0,.14);border:1px solid var(--border);border-radius:10px;padding:8px 11px}
+  .details{padding:12px 0 0;font-size:.84rem;line-height:1.65}
+  .details .det-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px 18px}
+  .details .det-item{padding:0}
+  .details .trust{margin-top:14px;padding-top:10px;border-top:1px solid var(--border)}
   .details .det-h{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
   .details .det-v{font-weight:700;font-variant-numeric:tabular-nums;font-size:.95rem}
   .details .det-s{font-size:.72rem;color:var(--muted);margin-top:2px}
 
-  /* Detail-Kacheln (dezent, ueberschaubar) */
-  .tiles{padding:12px 18px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
-  .tile{background:rgba(0,0,0,.10);border:1px solid var(--border);border-radius:12px;padding:9px 12px}
-  .tile-h{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:5px}
-  .spk-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  /* Sonne & Wind (schmale Zeile) */
+  .sw{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px 16px;align-items:center}
+  @media(max-width:560px){.sw{grid-template-columns:1fr}}
+  .sw-item{display:flex;align-items:center;gap:10px;min-width:0}
+  .sw-sun{width:76px;height:auto;flex:none}
+  .sw-bar{position:relative;width:76px;height:6px;flex:none;border-radius:999px;background:rgba(255,255,255,.08)}
+  .sw-bar i{display:block;height:100%;border-radius:999px}
+  .sw-bar b{position:absolute;top:-3px;width:2px;height:12px;border-radius:2px;background:#e8c547}
+  .sw-txt{min-width:0}
+  .sw-txt b{display:block;font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sw-txt small{font-size:.72rem;color:var(--muted)}
+
   .spk-leg{text-transform:none;letter-spacing:0;display:inline-flex;align-items:center;gap:5px}
   .spk-leg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-left:6px}
   .spk-leg .lg-t{background:linear-gradient(90deg,#4a90d9,#e8c547,#f5892f)}
   .spk-leg .lg-r{height:8px;width:6px;background:#4a90d9;opacity:.6}
   .spk-leg .lg-n{height:8px;background:rgba(74,144,217,.25)}
-  .spk-box{position:relative;height:clamp(110px,18vw,140px);margin-top:14px;touch-action:pan-y;cursor:crosshair}
+  .spk-box{position:relative;height:clamp(110px,18vw,140px);margin-top:10px;touch-action:pan-y;cursor:crosshair}
   .spk-box svg{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:hidden}
   .spk-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;pointer-events:none}
   .spk-pt b{position:absolute;left:50%;transform:translateX(-50%);font-size:.74rem;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -220,15 +237,6 @@
   .spk-ax span:first-child{transform:none}
   .spk-ax span:last-child{transform:none}
   @media(max-width:560px){.spk-ax .h3{display:none}}
-  .tile-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
-  .gauge,.sun{width:100%;height:auto;max-height:88px;display:block}
-  .g-num{fill:var(--text);font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
-  .g-u{fill:var(--muted);font-size:9px}
-  .g-peak{fill:#e8c547;font-weight:600}
-  .s-t{fill:var(--muted);font-size:9px;font-variant-numeric:tabular-nums}
-  .feel-n{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;color:var(--text)}
-  .feel-s{font-size:.72rem;color:var(--muted);margin-top:4px}
-  .tile.mini{display:flex;flex-direction:column;justify-content:center}
 
   .card.loading .card-head{opacity:.6}
   .spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.25);border-top-color:var(--teal);
@@ -594,7 +602,7 @@
       const p=new URLSearchParams({latitude:loc.lat,longitude:loc.lon,
         hourly:"temperature_2m,precipitation,precipitation_probability,cape,wind_gusts_10m,weather_code,snowfall,visibility",
         minutely_15:"precipitation",
-        current:"temperature_2m,apparent_temperature,relative_humidity_2m,wind_gusts_10m,weather_code",
+        current:"temperature_2m,apparent_temperature,relative_humidity_2m,wind_gusts_10m,weather_code,is_day",
         daily:"weather_code,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,temperature_2m_max,temperature_2m_min,sunrise,sunset",
         timezone:"auto",forecast_days:"4"});   // 4 Tage, damit ab jetzt volle 72 Std abgedeckt sind
       const [r, dwd]=await Promise.all([ fetch(`${FC}?${p}`), alerts(loc) ]);
@@ -605,8 +613,9 @@
       paintCard(el, loc, a, dwd, con, fc);
       stampUpdate();
     }catch(e){
+      console.error("SelfStorm:",e);
       el.className="card lv-0";
-      el.innerHTML=cardHeadHtml(loc,0,"Daten nicht abrufbar")+
+      el.innerHTML=cardHeadHtml(loc,0,"Daten nicht abrufbar",null,null,null,null)+
         `<div class="err">Konnte die Wetterdaten gerade nicht laden. Später erneut „Aktualisieren".</div>`;
       attachRemove(el,loc);
     }
@@ -618,8 +627,8 @@
       ? `Amtliche Warnung: ${escapeHtml(cap(dwd.items[0].event))} — Details unten.`
       : verdictText(a);
     el.className="card lv-"+lvl;
-    el.innerHTML=cardHeadHtml(loc, lvl, verdict, a, con, dwd)+nowcastHtml(fc)+dwdHtml(dwd)
-      +trendHtml(a, fc, loc)+detailsHtml(fc, a)+tilesHtml(fc);
+    el.innerHTML=dwdHtml(dwd)+cardHeadHtml(loc, lvl, verdict, a, con, dwd, fc)+nowcastHtml(fc)
+      +trendHtml(a, fc, loc)+sparkSection(fc)+sunWindHtml(fc)+detailsFooterHtml(fc, a, con, dwd);
     attachRemove(el,loc);
     el.querySelectorAll("[data-spk]").forEach(wireSpark);
     el.querySelectorAll("[data-trend]").forEach(wireTrend);
@@ -631,7 +640,25 @@
     };
   }
 
-  function ringHtml(score, color){
+  const LVWORD=["Ruhig","Ruhig","Beobachten","Warnung","Unwetter"];
+  // WMO-Wettercode → Symbol und Wort für „jetzt“
+  function wmoText(code, day){
+    const c=num(code);
+    if(c>=95) return ["⛈","Gewitter"];
+    if(c>=85) return ["🌨","Schneeschauer"];
+    if(c>=80) return ["🌦","Regenschauer"];
+    if(c>=71) return ["🌨","Schnee"];
+    if(c>=66) return ["🌧","Eisregen"];
+    if(c>=61) return ["🌧","Regen"];
+    if(c>=51) return ["🌦","Niesel"];
+    if(c===45||c===48) return ["🌫","Nebel"];
+    if(c===3) return ["☁️","bedeckt"];
+    if(c===2) return [day?"⛅":"☁️","teils bewölkt"];
+    if(c===1) return [day?"🌤":"🌙","meist klar"];
+    return day?["☀️","sonnig"]:["🌙","klar"];
+  }
+
+  function ringHtml(score, color, lv){
     const C=263.9, off=(C*(1-Math.min(100,Math.max(0,score))/100)).toFixed(1);
     return `<div class="ring-wrap">
       <svg viewBox="0 0 100 100">
@@ -639,48 +666,41 @@
         <circle class="ring-fg" cx="50" cy="50" r="42" stroke="${color}"
           stroke-dasharray="${C}" stroke-dashoffset="${off}"></circle>
       </svg>
-      <div class="ring-num"><b>${Math.round(score)}</b><span>Risiko</span></div>
+      <div class="ring-num"><b style="color:${color}">${LVWORD[lv]||"Ruhig"}</b><span>Risiko ${Math.round(score)}</span></div>
     </div>`;
   }
 
+  // Gefahren-Chips nur, wenn es wirklich etwas gibt
   function chipsHtml(a){
     const groups=[...a.groupLv.entries()].sort((x,y)=>y[1]-x[1]);
-    const inner=groups.length
-      ? groups.map(([g,glv])=>`<span class="rchip ${glv>=3?"high":"mid"}">${GROUP_NAME[g]||escapeHtml(g)}</span>`).join("")
-      : `<span class="rchip ok">🌤 Ruhig</span>`;
-    return `<div class="chips" style="margin-top:10px">${inner}</div>`;
+    if(!groups.length) return "";
+    return `<div class="chips" style="margin-top:9px">`
+      +groups.map(([g,glv])=>`<span class="rchip ${glv>=3?"high":"mid"}">${GROUP_NAME[g]||escapeHtml(g)}</span>`).join("")+`</div>`;
   }
 
-  function trustHtml(con, dwd){
-    const hasDwd=dwd&&dwd.items&&dwd.items.length>0;
-    let confTxt="", modelTxt;
-    if(!con||!con.total) modelTxt="Modell-Vergleich nicht verfügbar";
-    else {
-      const strong=con.warn===0||con.warn===con.total;
-      confTxt=strong?"hoch":"mittel";
-      modelTxt=con.warn===0
-        ? `keines der ${con.total} Modelle sieht Gewitter`
-        : con.warn===con.total
-          ? `alle ${con.total} Modelle sehen Gewitter`
-          : `${con.warn} von ${con.total} Modellen sehen Gewitter`;
-      if(con.warn>0&&con.day) modelTxt+=` (ab ${fmtWhen(con.day)})`;
-    }
-    return `<div class="trust"><span class="dot"></span>`
-      +(confTxt?`<b>Vertrauen: ${confTxt}</b> · `:"")
-      +modelTxt+` · ${hasDwd?"amtliche Warnung liegt vor":"keine amtliche Warnung"}</div>`;
+  // „Jetzt“-Zeile: Temperatur, Wetter, gefühlt, Böen
+  function nowLineHtml(fc){
+    const c=fc&&fc.current; if(!c) return "";
+    const [ic,txt]=wmoText(c.weather_code, c.is_day==null?1:c.is_day);
+    return `<div class="now-line">
+      <span class="now-temp">${Math.round(num(c.temperature_2m))}°</span>
+      <span class="now-wx">${ic} ${txt}</span>
+      <span class="now-x">gefühlt ${Math.round(num(c.apparent_temperature))}°</span>
+      <span class="now-x">🌬 ${Math.round(num(c.wind_gusts_10m))} km/h</span>
+    </div>`;
   }
 
-  function cardHeadHtml(loc, lv, verdict, a, con, dwd){
+  function cardHeadHtml(loc, lv, verdict, a, con, dwd, fc){
     const score=a?a.score:0, col=a?scoreColor(score,lv):"var(--green)";
     return `<button class="remove" title="Ort entfernen" data-x>✕</button>
       <div class="card-head">
-        ${ringHtml(score,col)}
+        ${ringHtml(score,col,lv)}
         <div class="loc-main">
           <div class="loc-name">${escapeHtml(loc.name)}</div>
           <div class="loc-sub">${escapeHtml(loc.sub||"")}</div>
-          ${a?chipsHtml(a)+trustHtml(con,dwd)+`<div class="verdict">${verdict}</div>
-            <button class="det-toggle" data-det aria-pressed="false"><span class="sw"></span> Details anzeigen</button>`
-            :`<div class="verdict">${verdict}</div>`}
+          ${nowLineHtml(fc)}
+          <div class="verdict">${verdict}</div>
+          ${a?chipsHtml(a):""}
         </div>
       </div>`;
   }
@@ -694,7 +714,7 @@
     return `<div class="outlook">${a.windows.map(w=>{
       const col=scoreColor(w.score,w.peak);
       return `<div class="ol-item">
-        <div class="ol-h">${name(w)}<small>${fmtShort(w.start)} – ${fmtShort(w.end)}</small></div>
+        <div class="ol-h">${name(w)}</div>
         <div class="ol-row"><span class="ol-score" style="color:${col}">${w.score}</span>
           <span class="ol-bar"><i style="width:${Math.max(3,w.score)}%;background:${col}"></i></span></div>
         <div class="ol-s">${w.peak>=2?`${icon(w.peakLabel)} ${escapeHtml(w.peakLabel)} · ab ${fmtShort(w.peakTime)}`:"🌤 ruhig"}</div>
@@ -719,8 +739,8 @@
     [24,48].forEach(k=>{ if(k<n-4) ax+=`<span style="left:${(k/(n-1)*100).toFixed(2)}%">+${k} Std</span>`; });
     ax+=`<span style="right:0;left:auto;transform:none">${fmtShort(hs[n-1].time)}</span>`;
     const data=escapeHtml(JSON.stringify(hs.map(x=>[x.time,x.score,x.lv>=2?x.label:""])));
-    return `<div class="trend">
-      <div class="trend-label"><span>Risiko-Verlauf · ab jetzt</span><span>${peakLbl}</span></div>
+    return `<div class="sec trend">
+      <div class="sec-h"><span>Ausblick · nächste 3 Tage</span><span>${peakLbl}</span></div>
       ${outlookHtml(a)}
       <div class="trend-box" data-trend="${data}">
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
@@ -753,24 +773,48 @@
   }
 
   // Zusätzliche genaue Zahlenangaben (nur via "Details anzeigen")
-  function detailsHtml(fc, a){
+  // Modell-Vergleich und Vertrauen — steht jetzt in den Details
+  function trustHtml(con, dwd){
+    const hasDwd=dwd&&dwd.items&&dwd.items.length>0;
+    let confTxt="", modelTxt;
+    if(!con||!con.total) modelTxt="Modell-Vergleich nicht verfügbar";
+    else {
+      const strong=con.warn===0||con.warn===con.total;
+      confTxt=strong?"hoch":"mittel";
+      modelTxt=con.warn===0
+        ? `keines der ${con.total} Modelle sieht Gewitter`
+        : con.warn===con.total
+          ? `alle ${con.total} Modelle sehen Gewitter`
+          : `${con.warn} von ${con.total} Modellen sehen Gewitter`;
+      if(con.warn>0&&con.day) modelTxt+=` (ab ${fmtWhen(con.day)})`;
+    }
+    return `<div class="trust"><span class="dot"></span>`
+      +(confTxt?`<b>Vertrauen: ${confTxt}</b> · `:"")
+      +modelTxt+` · ${hasDwd?"amtliche Warnung liegt vor":"keine amtliche Warnung"}</div>`;
+  }
+  function detailsFooterHtml(fc, a, con, dwd){
+    return `<div class="det-foot">
+      <button class="det-toggle" data-det aria-pressed="false"><span class="sw"></span> Details anzeigen</button>
+      ${detailsHtml(fc,a,con,dwd)}</div>`;
+  }
+  function detailsHtml(fc, a, con, dwd){
     const d=fc&&fc.daily, c=fc&&fc.current;
     const r1=v=>(v==null||isNaN(v))?"—":Math.round(v);
     const items=[
-      ["Boen", r1(a.maxGust)+" km/h", "max. in 3 Tagen"],
+      ["Böen", r1(a.maxGust)+" km/h", "max. in 3 Tagen"],
       ["Niederschlag", r1(a.maxPr1h)+" mm", "stärkste Stunde"],
       ["Regen gesamt (3 T.)", (d&&d.precipitation_sum)?r1(d.precipitation_sum[0]+d.precipitation_sum[1]+d.precipitation_sum[2])+" mm":"—",""],
       ["Regenwahrsch. (3 T.)", (d&&d.precipitation_probability_max)?r1(Math.max(d.precipitation_probability_max[0]||0,d.precipitation_probability_max[1]||0,d.precipitation_probability_max[2]||0))+" %":"—",""],
       ["CAPE", r1(a.maxCape)+" J/kg", "max. Gewitter-Energie"],
       ["Temperatur", r1(a.maxTemp)+"° / "+r1(a.minTemp)+"°", "max / min in 3 Tagen"],
-      ["Sicht", a.minVis>0?("ab "+r1(a.minVis)+" m"):"gut","min. in 3 Tagen"],
-      ["Aktuell", c?(r1(c.temperature_2m)+"° · "+r1(c.relative_humidity_2m)+"% Feuchte"):"—",""]
+      ["Sicht", (a.minVis>0&&a.minVis<5000)?("ab "+r1(a.minVis)+" m"):"gut","schlechteste in 3 Tagen"],
+      ["Aktuell", c?(r1(c.temperature_2m)+"° · "+r1(c.relative_humidity_2m)+"% Feuchte"):"—","gerade gemessen"]
     ];
     return `<div class="details" hidden>
-      <div class="det-h" style="margin:0">Genauere Angaben</div>
       <div class="det-grid">
         ${items.map(it=>`<div class="det-item"><div class="det-h">${it[0]}</div><div class="det-v">${it[1]}</div>${it[2]?`<div class="det-s">${it[2]}</div>`:""}</div>`).join("")}
       </div>
+      ${trustHtml(con,dwd)}
     </div>`;
   }
 
@@ -818,7 +862,7 @@
     return d; }
 
   // 24-Stunden-Verlauf: volle Breite, Nachtbereiche, Stundenachse, Werte beim Drueberfahren
-  function sparkTile(fc){
+  function sparkSection(fc){
     const h=fc&&fc.hourly; if(!h||!h.time) return "";
     const i0=nowIndex(h.time), rows=[];
     for(let k=0;k<=24&&i0+k<h.time.length;k++){ const i=i0+k;
@@ -840,8 +884,8 @@
     let ax=""; rows.forEach((r,k)=>{ if(k===0) ax+=`<span style="left:0">jetzt</span>`;
       else if(k%3===0&&k<n-1) ax+=`<span class="${k%6?"h3":""}" style="left:${(X(k)/W*100).toFixed(2)}%">${r[0].slice(11,13)}</span>`; });
     const data=escapeHtml(JSON.stringify(rows.map(r=>[r[0].slice(11,16),Math.round(r[1]*10)/10,Math.round(r[2]),Math.round(r[3]*10)/10])));
-    return `<div class="tile wide"><div class="tile-h spk-head"><span>24-Stunden-Verlauf</span>
-        <span class="spk-leg"><i class="lg-t"></i>Temperatur <i class="lg-r"></i>Regen-Wahrsch. <i class="lg-n"></i>Nacht</span></div>
+    return `<div class="sec"><div class="sec-h"><span>Heute · nächste 24 Stunden</span>
+        <span class="spk-leg"><i class="lg-t"></i>Temperatur <i class="lg-r"></i>Regen <i class="lg-n"></i>Nacht</span></div>
       <div class="spk-box" data-spk="${data}" data-min="${tmin}" data-span="${span}">
         <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${night}${bars}
           <path d="${area}" fill="url(#tf)"/>
@@ -867,42 +911,36 @@
     box.addEventListener("pointerleave",()=>{ cur.hidden=true; });
   }
 
-  function gaugeTile(fc){
-    const cur=fc&&fc.current, d=fc&&fc.daily;
-    const g=cur?num(cur.wind_gusts_10m):0, gmax=(d&&d.wind_gusts_10m_max)?num(d.wind_gusts_10m_max[0]):g;
-    const CAP=120,R=42,a0=135,sw=270,fr=Math.min(1,g/CAP),frM=Math.min(1,gmax/CAP);
-    const pol=(a,rr)=>{ const r=a*Math.PI/180; return [60+ (rr==null?R:rr)*Math.cos(r), 56+(rr==null?R:rr)*Math.sin(r)]; };
-    const arc=(f0,f1)=>{ const p0=pol(a0+sw*f0),p1=pol(a0+sw*f1),lg=(sw*(f1-f0))>180?1:0; return `M${p0[0].toFixed(1)},${p0[1].toFixed(1)} A${R},${R} 0 ${lg} 1 ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`; };
-    const ta=a0+sw*frM,t0=pol(ta,R-7),t1=pol(ta,R+3);
-    return `<div class="tile"><div class="tile-h">Windböen</div>
-      <svg class="gauge" viewBox="0 0 120 98">
-        <path d="${arc(0,1)}" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round"/>
-        <path d="${arc(0,fr)}" fill="none" stroke="#33a78c" stroke-width="9" stroke-linecap="round"/>
-        <line x1="${t0[0].toFixed(1)}" y1="${t0[1].toFixed(1)}" x2="${t1[0].toFixed(1)}" y2="${t1[1].toFixed(1)}" stroke="#e8c547" stroke-width="2.5" stroke-linecap="round"/>
-        <text class="g-num" x="60" y="58" text-anchor="middle">${Math.round(g)}</text>
-        <text class="g-u" x="60" y="72" text-anchor="middle">km/h</text>
-        <text class="g-u g-peak" x="60" y="94" text-anchor="middle">Spitze ${Math.round(gmax)}</text></svg></div>`;
-  }
-
-  function sunTile(fc){
-    const d=fc&&fc.daily; if(!d||!d.sunrise||!d.sunrise[0]) return "";
-    const sr=new Date(d.sunrise[0]).getTime(), ss=new Date(d.sunset[0]).getTime(), now=Date.now();
-    let fr=(now-sr)/(ss-sr); const up=fr>=0&&fr<=1; fr=Math.max(0,Math.min(1,fr));
-    const bx=10+fr*100, by=64-Math.sin(fr*Math.PI)*44;
-    return `<div class="tile"><div class="tile-h">Sonne</div>
-      <svg class="sun" viewBox="0 0 120 78">
-        <path d="M10 64 Q60 20 110 64" fill="none" stroke="url(#sunA)" stroke-width="2.2"/>
-        <line x1="8" y1="64" x2="112" y2="64" stroke="rgba(255,255,255,.15)" stroke-width="1" stroke-dasharray="4 4"/>
-        ${up?`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="5" fill="#f0b429"/>`:`<circle cx="${bx.toFixed(1)}" cy="63" r="4" fill="#c9d4e0"/>`}
-        <text class="s-t" x="3" y="76" text-anchor="start">↑ ${d.sunrise[0].slice(11,16)}</text>
-        <text class="s-t" x="117" y="76" text-anchor="end">↓ ${d.sunset[0].slice(11,16)}</text></svg></div>`;
-  }
-
-  function tilesHtml(fc){
-    if(!fc||!fc.hourly) return "";
-    const c=fc.current;
-    const feel=c?`<div class="tile mini"><div class="tile-h">Gefühlt</div><div class="feel-n">${Math.round(num(c.apparent_temperature))}°</div><div class="feel-s">akt. ${Math.round(num(c.temperature_2m))}° · ${Math.round(num(c.relative_humidity_2m))}% Luftf.</div></div>`:"";
-    return `<div class="tiles">${sparkTile(fc)}<div class="tile-row">${gaugeTile(fc)}${sunTile(fc)}${feel}</div></div>`;
+  // Sonne & Wind als schmale Zeile
+  function sunWindHtml(fc){
+    const d=fc&&fc.daily, c=fc&&fc.current;
+    if(!d&&!c) return "";
+    let sun="";
+    if(d&&d.sunrise&&d.sunrise[0]){
+      const sr=new Date(d.sunrise[0]).getTime(), ss=new Date(d.sunset[0]).getTime(), now=Date.now();
+      let fr=(now-sr)/(ss-sr); const up=fr>=0&&fr<=1; fr=Math.max(0,Math.min(1,fr));
+      const bx=8+fr*104, by=30-Math.sin(fr*Math.PI)*22;
+      sun=`<div class="sw-item">
+        <svg class="sw-sun" viewBox="0 0 120 36" aria-hidden="true">
+          <path d="M8 31 Q60 2 112 31" fill="none" stroke="url(#sunA)" stroke-width="2"/>
+          ${up?`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="4.5" fill="#f0b429"/>`
+              :`<circle cx="${bx.toFixed(1)}" cy="31" r="3.5" fill="#c9d4e0"/>`}
+        </svg>
+        <div class="sw-txt"><b>↑ ${d.sunrise[0].slice(11,16)} · ↓ ${d.sunset[0].slice(11,16)}</b><small>Sonne</small></div>
+      </div>`;
+    }
+    let wind="";
+    if(c){
+      const g=num(c.wind_gusts_10m), gmax=(d&&d.wind_gusts_10m_max)?num(d.wind_gusts_10m_max[0]):g;
+      const fr=Math.min(1,g/120), col=gmax>=70?"var(--orange)":gmax>=55?"var(--yellow)":"var(--teal)";
+      wind=`<div class="sw-item">
+        <div class="sw-bar"><i style="width:${Math.max(3,fr*100).toFixed(0)}%;background:${col}"></i>
+          <b style="left:${Math.min(97,gmax/120*100).toFixed(0)}%"></b></div>
+        <div class="sw-txt"><b>${Math.round(g)} km/h · Spitze ${Math.round(gmax)}</b><small>Windböen heute</small></div>
+      </div>`;
+    }
+    const feel=c?`<div class="sw-item"><div class="sw-txt"><b>${Math.round(num(c.relative_humidity_2m))} % Luftfeuchte</b><small>gefühlt ${Math.round(num(c.apparent_temperature))}°</small></div></div>`:"";
+    return `<div class="sec sw">${sun}${wind}${feel}</div>`;
   }
 
   function attachRemove(el,loc){
