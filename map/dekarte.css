@@ -137,3 +137,5 @@
 .dk-hr b{font-size:.74rem}
 .dk-legend .dk-lg-wx i{border-radius:3px;margin-left:4px}
 .dk-legend .dk-lg-wx i:first-child{margin-left:0}
+.dk-legend .dk-lg-wx i.dk-lg-rain{width:34px;background:linear-gradient(90deg,rgb(125,190,255),rgb(70,145,250),rgb(35,95,225),rgb(110,70,235),rgb(205,80,225))}
+.dk-legend .dk-lg-wx i.dk-lg-snow{background:linear-gradient(90deg,rgb(240,190,245),rgb(215,95,215))}

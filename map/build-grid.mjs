@@ -62,6 +62,9 @@ function wxGroup(code, day) {
   if (code === 2) return day ? 1 : 9;
   return day ? 0 : 8;
 }
+// Niederschlag je Stunde als Ziffer (Radar-Ansicht): Stufe 0–9 nach mm/h
+const PR_STEPS = [0.1, 0.3, 0.6, 1, 2, 4, 7, 12, 20];
+const prCode = mm => PR_STEPS.filter(s => (mm || 0) >= s).length;
 // Temperatur kompakt: zwei Base36-Zeichen, Versatz +50 °C ("1c" = -2 °C)
 const tempCode = t => (Math.max(-50, Math.min(1245, Math.round(t == null ? 0 : t))) + 50).toString(36).padStart(2, "0");
 
@@ -85,12 +88,13 @@ for (let b = 0; b < grid.length; b += BATCH) {
   arr.forEach((res, i) => {
     const h = res.hourly;
     if (!hours) hours = h.time;
-    const g = chunk[i]; g.lv = []; g.hz = []; g.wx = []; g.t = [];
+    const g = chunk[i]; g.lv = []; g.hz = []; g.wx = []; g.t = []; g.pr = [];
     for (let k = 0; k < h.time.length; k++) {
       const r = H.hourHazard(h, k);
       g.lv.push(r.lv); g.hz.push(r.cat);
       g.wx.push(wxGroup(h.weather_code[k], h.is_day ? h.is_day[k] : 1));
       g.t.push(tempCode(h.temperature_2m[k]));
+      g.pr.push(prCode(h.precipitation[k]));
     }
   });
   console.log(`Batch ${b / BATCH + 1}: ${arr.length} Punkte`);
@@ -103,7 +107,7 @@ const out = {
   step: STEP,
   hours,                                       // ~72 UTC-Zeitstempel
   // lv/hz kompakt als Ziffernfolge: ein Zeichen pro Stunde
-  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: (g.lv || []).join(""), hz: (g.hz || []).join(""), wx: (g.wx || []).join(""), t: (g.t || []).join("") }))
+  points: grid.map(g => ({ lat: g.lat, lon: g.lon, lv: (g.lv || []).join(""), hz: (g.hz || []).join(""), wx: (g.wx || []).join(""), t: (g.t || []).join(""), pr: (g.pr || []).join("") }))
 };
 await fs.writeFile(new URL("./grid.json", import.meta.url), JSON.stringify(out));
 console.log(`grid.json geschrieben: ${out.points.length} Punkte × ${hours ? hours.length : 0} Stunden`);

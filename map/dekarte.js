@@ -16,8 +16,8 @@
   const ICON={1:"⛈",2:"🌬",3:"💧",4:"🌡",5:"🧊",6:"❄",7:"🌫"};
   // Wetter je Stunde (grid.json "wx"): Symbol, Name, Flächenfarbe in der Gemeinde-Ansicht
   const WX=[["☀️","sonnig","rgba(244,197,52,.17)"],["⛅","teils bewölkt","rgba(244,197,52,.08)"],["☁️","bewölkt","rgba(157,189,208,.13)"],
-    ["🌫","Nebel","rgba(210,220,230,.22)"],["🌦","Nieselregen","rgba(74,144,217,.17)"],["🌧","Regen","rgba(74,144,217,.32)"],
-    ["🌨","Schnee","rgba(225,238,255,.3)"],["⛈","Gewitter","rgba(168,85,247,.36)"],["🌙","klar","rgba(120,140,210,.07)"],["☁️","teils bewölkt","rgba(157,189,208,.09)"]];
+    ["🌫","Nebel","rgba(210,220,230,.22)"],["🌦","Nieselregen","rgba(74,144,217,.08)"],["🌧","Regen","rgba(74,144,217,.12)"],
+    ["🌨","Schnee","rgba(225,238,255,.3)"],["⛈","Gewitter","rgba(168,85,247,.16)"],["🌙","klar","rgba(120,140,210,.07)"],["☁️","teils bewölkt","rgba(157,189,208,.09)"]];
   const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
   const SEV_LABEL={minor:"Wetterwarnung",moderate:"Markante Warnung",severe:"Unwetterwarnung",extreme:"Extreme Unwetterwarnung"};
   // Landeshauptstadt je Bundesland (Zuordnung von Raster-Randpunkten)
@@ -93,7 +93,7 @@
           <span><i style="background:${COL[3]}"></i>Warnung</span>
           <span><i style="background:${COL[4]}"></i>Unwetter</span>
           <span><i class="dk-lg-dwd"></i>amtlich (DWD)</span>
-          <span class="dk-lg-wx"><i style="background:rgba(244,197,52,.55)"></i>sonnig <i style="background:rgba(74,144,217,.7)"></i>Regen <i style="background:rgba(168,85,247,.7)"></i>Gewitter</span>
+          <span class="dk-lg-wx"><i style="background:rgba(244,197,52,.55)"></i>sonnig <i class="dk-lg-rain"></i>Regen leicht → stark <i class="dk-lg-snow"></i>Schnee</span>
           <span><i class="dk-lg-loc"></i>deine Orte</span>
         </div>
       </div>
@@ -121,7 +121,7 @@
     grid=g; states=bl.features; outline=de.features[0].geometry.coordinates;
     // Raster kompakt: Ziffernfolgen (lv, hz, wx) und Temperatur als Base36-Paare (+50 °C)
     const digits=v=>typeof v==="string"?Array.from(v,Number):v;
-    g.points.forEach(p=>{ p.lv=digits(p.lv); p.hz=digits(p.hz); if(p.wx!=null) p.wx=digits(p.wx);
+    g.points.forEach(p=>{ p.lv=digits(p.lv); p.hz=digits(p.hz); if(p.wx!=null) p.wx=digits(p.wx); if(p.pr) p.pr=digits(p.pr);
       if(typeof p.t==="string"){ const a=[]; for(let i=0;i<p.t.length;i+=2) a.push(parseInt(p.t.substr(i,2),36)-50); p.t=a; } });
     hours=g.hours; hourMs=hours.map(h=>new Date(h+"Z").getTime());
     B=g.bbox; V={...B}; kx=Math.cos(((B.minLat+B.maxLat)/2)*Math.PI/180);
@@ -244,6 +244,19 @@
     if(selected===id){ dirty=true; renderSide(); }
     return gem[id];
   }
+  // ---------- Ortsnamen (Städte, Stadtteile, Dörfer, Weiler aus OSM) ----------
+  const orte={}, stateBox={};
+  async function loadOrte(id){
+    if(orte[id]) return; orte[id]={loading:true};
+    try{
+      const j=await fetch(`map/orte/${id}.json`).then(okJson), n=j.n.length, x=new Float32Array(n), y=new Float32Array(n);
+      for(let i=0;i<n;i++){ x[i]=5+j.p[2*i]/1000; y[i]=47+j.p[2*i+1]/1000; }
+      orte[id]={n:j.n,t:Uint8Array.from(j.t,Number),x,y}; dirty=true;
+    }catch(e){ orte[id]={failed:true}; }
+  }
+  // Ab welcher Zoomstufe ein Rang beschriftet wird: Großstadt, Stadt, Stadtteil, Dorf, Viertel, Weiler
+  const ORT_Z=[1,1.8,3.2,3.2,7,7], ORT_FONT=[`600 11px`,`500 11px`,`italic 500 10px`,`500 10px`,`italic 9px`,`9px`];
+  const ORT_COL=["rgba(214,232,242,.8)","rgba(200,224,238,.72)","rgba(160,215,200,.62)","rgba(188,217,233,.58)","rgba(160,215,200,.5)","rgba(188,217,233,.46)"];
   const gemReady=()=>selected&&gem[selected]&&gem[selected].list.length?gem[selected]:null;
   function gemAt(lon,lat){
     const g=gemReady(); if(!g) return null;
@@ -291,7 +304,7 @@
   const isZoomed=()=>Math.max((V.maxLon-V.minLon)/(B.maxLon-B.minLon),(V.maxLat-V.minLat)/(B.maxLat-B.minLat))<.98;
   function setView(v){
     let vw=v.maxLon-v.minLon, vh=v.maxLat-v.minLat, cx=(v.minLon+v.maxLon)/2, cy=(v.minLat+v.maxLat)/2;
-    const s=Math.max(vw/(B.maxLon-B.minLon),vh/(B.maxLat-B.minLat)), mn=.35/vh;
+    const s=Math.max(vw/(B.maxLon-B.minLon),vh/(B.maxLat-B.minLat)), mn=.06/vh;
     if(s>1){ vw/=s; vh/=s; } else if(mn>1){ vw*=mn; vh*=mn; }
     const lim=(c,lo,hi,w)=>lo+w*.3>hi-w*.3?(lo+hi)/2:Math.max(lo+w*.3,Math.min(hi-w*.3,c));
     cx=lim(cx,B.minLon,B.maxLon,vw); cy=lim(cy,B.minLat,B.maxLat,vh);
@@ -343,13 +356,15 @@
         const o=own[jj*nx+ii], d=di*di+dj*dj; if(o>=0&&d<bd){ bd=d; best=o; } }
       cell[k]=best;
     }
-    F={st,lat0,lon0,nx,ny,cell,lv:new Float32Array(nx*ny),wx:new Float32Array(nx*ny*4),hour:-1};
+    F={st,lat0,lon0,nx,ny,cell,lv:new Float32Array(nx*ny),rain:new Float32Array(nx*ny),snow:new Float32Array(nx*ny),wx:new Float32Array(nx*ny*4),hour:-1};
   }
   function fillFieldHour(){
     if(F.hour===idx) return;
     for(let k=0;k<F.nx*F.ny;k++){
       const pi=F.cell[k], p=pi>=0?grid.points[pi]:null, lv=p?p.lv[idx]:0;
       F.lv[k]=lv>=2?lv:0;
+      const mm=p?(p.pr?PR_MM[p.pr[idx]]:(p.wx?WX_MM[p.wx[idx]]:0)):0, sn=p&&p.wx&&p.wx[idx]===6;
+      F.rain[k]=sn?0:mm; F.snow[k]=sn?Math.max(mm,.4):0;
       const w=p&&p.wx?WXRGBA[p.wx[idx]]:null, o=k*4;
       if(w){ F.wx[o]=w[0]; F.wx[o+1]=w[1]; F.wx[o+2]=w[2]; F.wx[o+3]=w[3]*.85; } else F.wx[o+3]=0;
     }
@@ -364,17 +379,25 @@
     F.hour=idx;
   }
   const LVRGB={2:rgbOf(COL[2]),3:rgbOf(COL[3]),4:rgbOf(COL[4])};
-  function renderField(c){
+  // Niederschlag wie ein Regenradar: mm/h je Stufe (grid.json "pr"), ohne "pr" grob aus dem Wettersymbol
+  const PR_MM=[0,.15,.4,.8,1.4,2.8,5,9,15,25], WX_MM=[0,0,0,0,.4,1.4,1,5,0,0];
+  // [ab mm/h, r, g, b, Deckkraft]: hellblau → blau → dunkelblau → violett → magenta
+  const RAIN_RAMP=[[.1,125,190,255,.42],[.5,70,145,250,.6],[2,35,95,225,.72],[5,110,70,235,.8],[10,205,80,225,.85]];
+  const SNOW_RAMP=[[.1,240,190,245,.45],[1,235,140,230,.62],[3,215,95,215,.75]];
+  const ramp=(R,v,o)=>{ if(v<R[0][0]*.7) return 0; let i=0; while(i<R.length-1&&v>=R[i+1][0]) i++;
+    const a=R[i]; o[0]=a[1]; o[1]=a[2]; o[2]=a[3]; return a[4]*Math.min(1,(v-R[0][0]*.7)/(R[0][0]*.6)); };
+  function renderField(c,onlyRain){
     if(!F||!W) return;
     fillFieldHour();
     const fw=Math.ceil(W/FIELD_RES), fh=Math.ceil(H/FIELD_RES);
     if(fcan.width!==fw||fcan.height!==fh){ fcan.width=fw; fcan.height=fh; }
     const img=fctx.createImageData(fw,fh), d=img.data, {st,lat0,lon0,nx,ny,lv}=F;
     // 1) Wetter als weich verlaufende Tönung
+    const {rain,snow}=F, rc=[0,0,0];
     const tl=px(lon0-st/2,lat0+(ny-.5)*st), br=px(lon0+(nx-.5)*st,lat0-st/2), cellPx=(br[0]-tl[0])/nx;
-    c.save(); c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
+    if(!onlyRain){ c.save(); c.imageSmoothingEnabled=true; c.imageSmoothingQuality="high";
     if("filter" in c) c.filter=`blur(${Math.max(1,cellPx*.45).toFixed(1)}px)`;
-    c.drawImage(wcan,tl[0],tl[1],br[0]-tl[0],br[1]-tl[1]); c.restore();
+    c.drawImage(wcan,tl[0],tl[1],br[0]-tl[0],br[1]-tl[1]); c.restore(); }
     // Catmull-Rom-Gewichte: runde, weiche Formen statt Kästchen
     const catrom=(t,o)=>{ const t2=t*t, t3=t2*t;
       o[0]=-.5*t3+t2-.5*t; o[1]=1.5*t3-2.5*t2+1; o[2]=-1.5*t3+2*t2+.5*t; o[3]=.5*t3-.5*t2; };
@@ -387,18 +410,21 @@
         const lon=V.minLon+((x+.5)*FIELD_RES-ox)/(scale*kx), gx=(lon-lon0)/st;
         if(gx<-1||gx>nx) continue;
         const i0=Math.floor(gx); catrom(gx-i0,wxw);
-        let v=0;
+        let v=0, vr=0, vs=0;
         for(let qy=0;qy<4;qy++){ const jj=j0-1+qy; if(jj<0||jj>=ny) continue;
           for(let qx=0;qx<4;qx++){ const ii=i0-1+qx; if(ii<0||ii>=nx) continue;
-            v+=lv[jj*nx+ii]*wxw[qx]*wyw[qy];
+            const w=wxw[qx]*wyw[qy], k=jj*nx+ii; v+=lv[k]*w; vr+=rain[k]*w; vs+=snow[k]*w;
           } }
+        if(onlyRain) v=0;
         // Gefahrenstufe als Fläche: ab 1 gelb, ab 2,5 orange, ab 3,5 rot; weicher 0,2-Rand
         let ah=0, cr=0, cg=0, cb=0;
         if(v>=.9){ const L=v>=3.5?4:v>=2.5?3:2, col=LVRGB[L]; cr=col[0]; cg=col[1]; cb=col[2];
           ah=Math.min(1,(v-.9)/.2)*(L>=3?.62:.5); }
-        if(ah<=0) continue;
-        const p4=(y*fw+x)*4;
-        d[p4]=cr; d[p4+1]=cg; d[p4+2]=cb; d[p4+3]=ah*255;
+        // Regen/Schnee darunter, Gefahrenfläche darüber gemischt
+        let ar=vs>vr?ramp(SNOW_RAMP,vs,rc):ramp(RAIN_RAMP,vr,rc);
+        if(ah<=0&&ar<=0) continue;
+        const a=ah+ar*(1-ah), p4=(y*fw+x)*4;
+        d[p4]=(cr*ah+rc[0]*ar*(1-ah))/a; d[p4+1]=(cg*ah+rc[1]*ar*(1-ah))/a; d[p4+2]=(cb*ah+rc[2]*ar*(1-ah))/a; d[p4+3]=a*255;
       }
     }
     fctx.putImageData(img,0,0);
@@ -417,6 +443,7 @@
     const lg=c.createLinearGradient(0,0,0,H); lg.addColorStop(0,"rgba(67,211,173,.05)"); lg.addColorStop(1,"rgba(29,184,212,.02)");
     c.fillStyle=lg; c.fill();
 
+    let taken=[];
     // Hover/Auswahl; im Ersatzbetrieb (ohne Warnflächen) ganzes Bundesland einfärben
     states.forEach(f=>{
       const id=f.properties.id, lv=dwdReady&&dwdSrc==="bs"?dwdLevel(id,t):0;
@@ -442,6 +469,7 @@
         c.fill("evenodd");
         if(dwdSrc==="bs"&&gemWarns(m,t).length){ c.fillStyle=hatch(c,COL[gemWarns(m,t).reduce((x,a)=>Math.max(x,SEVLV[a.sev]||2),0)]); c.fill("evenodd"); }
       });
+      c.save(); c.beginPath(); addRings(c,selF.geometry); c.clip(); renderField(c,true); c.restore();
       c.beginPath(); gm.list.forEach(m=>m.rings.forEach(r=>ringPath(c,r)));
       c.strokeStyle="rgba(157,189,208,.2)"; c.lineWidth=.5; c.stroke();
     }
@@ -480,7 +508,7 @@
       if(selGem){ c.beginPath(); selGem.rings.forEach(r=>ringPath(c,r)); c.save(); c.shadowColor="rgba(67,211,173,.9)"; c.shadowBlur=10; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
       if(hoverGem&&hoverGem!==selGem){ c.beginPath(); hoverGem.rings.forEach(r=>ringPath(c,r)); c.strokeStyle="rgba(238,244,247,.85)"; c.lineWidth=1.4; c.stroke(); }
       // Wettersymbole: Gefahren zuerst, dann große Gemeinden; ohne Überlappung
-      const sz=W<420?12:14, taken=[];
+      const sz=W<420?12:14; taken=[];
       c.font=`${sz}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; c.textAlign="center"; c.textBaseline="middle";
       gm.list.map(m=>({m,st:gemState(m,idx),a:(m.b[2]-m.b[0])*(m.b[3]-m.b[1])}))
         .sort((x,y)=>(y.st.lv>=2)-(x.st.lv>=2)||y.st.lv-x.st.lv||y.a-x.a)
@@ -495,9 +523,11 @@
 
     // Städte (mehr Namen, je näher herangezoomt; ohne Überlappung)
     const small=W<420, z=zoomLevel(), boxes=[];
-    if(gm&&z>=2.6){ dirty=false; return; }   // stark herangezoomt: Gemeinde-Symbole statt Städtenamen
+    const drawn=new Set();
+    // Wettersymbole der Gemeinden freihalten
+    const gap=(W<420?12:14)*.7; taken.forEach(q=>boxes.push([q[0]-gap,q[1]-gap,q[0]+gap,q[1]+gap]));
     c.font=`500 ${small?10:11}px "Exo 2", system-ui, sans-serif`; c.textBaseline="middle";
-    CITIES.forEach(([name,lon,lat,tier])=>{
+    if(!(gm&&z>=2.6)) CITIES.forEach(([name,lon,lat,tier])=>{
       if(tier===2&&z<1.6) return; if(tier===0&&small&&z<1.6) return;
       const q=px(lon,lat); if(q[0]<0||q[1]<0||q[0]>W||q[1]>H) return;
       const bw=c.measureText(name).width, bx=[q[0]-3,q[1]-7,q[0]+8+bw,q[1]+7];
@@ -505,7 +535,29 @@
       c.fillStyle="rgba(188,217,233,.75)"; c.beginPath(); c.arc(q[0],q[1],tier===1?2.4:1.8,0,6.2832); c.fill();
       c.lineWidth=3; c.strokeStyle="rgba(8,12,17,.75)"; c.strokeText(name,q[0]+6,q[1]);
       c.fillStyle=tier===2?"rgba(188,217,233,.5)":"rgba(188,217,233,.62)"; c.fillText(name,q[0]+6,q[1]);
+      drawn.add(name);
     });
+    // Herangezoomt: Orte der sichtbaren Bundesländer, wichtige zuerst, ohne Überlappung
+    if(z>=1.8){
+      let count=0; const maxLabels=small?90:220;
+      states.forEach(f=>{
+        const id=f.properties.id, b=stateBox[id]||(stateBox[id]=bboxOf(f.geometry));
+        if(b[0]>V.maxLon||b[2]<V.minLon||b[1]>V.maxLat||b[3]<V.minLat) return;
+        const o=orte[id]; if(!o){ loadOrte(id); return; } if(!o.n) return;
+        for(let i=0;i<o.n.length&&count<maxLabels;i++){
+          const r=o.t[i]; if(z<ORT_Z[r]) break;
+          const lon=o.x[i], lat=o.y[i]; if(lon<V.minLon||lon>V.maxLon||lat<V.minLat||lat>V.maxLat) continue;
+          const name=o.n[i]; if(r<=1&&drawn.has(name)) continue;
+          const q=px(lon,lat); if(q[0]<2||q[1]<6||q[0]>W-20||q[1]>H-6) continue;
+          if(boxes.some(b=>q[0]>b[0]-4&&q[0]<b[2]&&q[1]>b[1]-3&&q[1]<b[3]+3)) continue;
+          c.font=`${ORT_FONT[r]} "Exo 2", system-ui, sans-serif`;
+          const bw=c.measureText(name).width, bx=[q[0]-3,q[1]-7,q[0]+8+bw,q[1]+7];
+          if(boxes.some(o=>bx[0]<o[2]&&bx[2]>o[0]&&bx[1]<o[3]&&bx[3]>o[1])) continue; boxes.push(bx); count++;
+          c.fillStyle=ORT_COL[r]; c.beginPath(); c.arc(q[0],q[1],r<=1?2.2:r===3?1.5:1.1,0,6.2832); c.fill();
+          c.lineWidth=3; c.strokeStyle="rgba(8,12,17,.78)"; c.strokeText(name,q[0]+5,q[1]); c.fillText(name,q[0]+5,q[1]);
+        }
+      });
+    }
     dirty=false;
   }
 
