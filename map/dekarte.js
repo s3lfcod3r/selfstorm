@@ -255,8 +255,12 @@
     }catch(e){ orte[id]={failed:true}; }
   }
   // Ab welcher Zoomstufe ein Rang beschriftet wird: Großstadt, Stadt, Stadtteil, Dorf, Viertel, Weiler
-  const ORT_Z=[1,1.8,3.2,3.2,7,7], ORT_FONT=[`600 11px`,`500 11px`,`italic 500 10px`,`500 10px`,`italic 9px`,`9px`];
-  const ORT_COL=["rgba(214,232,242,.8)","rgba(200,224,238,.72)","rgba(160,215,200,.62)","rgba(188,217,233,.58)","rgba(160,215,200,.5)","rgba(188,217,233,.46)"];
+  // Rang: Großstadt, Stadt, Bezirk, Stadtteil, Dorf, Viertel, Weiler — Hierarchie nur über Größe/Helligkeit,
+  // Bezirke und Stadtteile in gesperrten Großbuchstaben (wie auf Stadtplänen), Weiler/Viertel erst ganz nah
+  const ORT_Z=[1,1.8,3,4.5,3.2,14,18];
+  const ORT_FONT=["600 13px","600 12px","600 10.5px","500 10px","500 11px","500 10px","500 10px"];
+  const ORT_COL=["rgba(238,244,247,.92)","rgba(226,236,242,.86)","rgba(150,214,196,.8)","rgba(150,214,196,.66)","rgba(200,222,234,.78)","rgba(170,196,210,.58)","rgba(170,196,210,.58)"];
+  const ORT_UP=[0,0,1,1,0,0,0], ORT_DOT=[2.6,2.2,0,0,1.6,1.2,1.2];
   const gemReady=()=>selected&&gem[selected]&&gem[selected].list.length?gem[selected]:null;
   function gemAt(lon,lat){
     const g=gemReady(); if(!g) return null;
@@ -443,7 +447,7 @@
     const lg=c.createLinearGradient(0,0,0,H); lg.addColorStop(0,"rgba(67,211,173,.05)"); lg.addColorStop(1,"rgba(29,184,212,.02)");
     c.fillStyle=lg; c.fill();
 
-    let taken=[];
+    let taken=[], drawIcons=null;
     // Hover/Auswahl; im Ersatzbetrieb (ohne Warnflächen) ganzes Bundesland einfärben
     states.forEach(f=>{
       const id=f.properties.id, lv=dwdReady&&dwdSrc==="bs"?dwdLevel(id,t):0;
@@ -496,10 +500,13 @@
     // Herangezoomt: Umgebung abdunkeln, gewähltes Land hervorheben
     // (Beim Landkreis-Zoom passen die vereinfachten Landesumrisse nicht zu den Gemeindegrenzen → dort Gemeinden abdunkeln)
     const kreisView=gm&&selGem;
-    if(selected&&!kreisView){ const f=stateById(selected); c.beginPath(); c.rect(0,0,W,H); addRings(c,f.geometry); c.fillStyle="rgba(8,12,17,.5)"; c.fill("evenodd"); }
+    // Ganz nah passen die vereinfachten Landesumrisse nicht mehr → mit den Gemeindegrenzen abdunkeln, ohne Umriss
+    const deep=gm&&zoomLevel()>=3;
+    if(deep&&!kreisView){ c.beginPath(); c.rect(0,0,W,H); gm.list.forEach(m=>m.rings.forEach(r=>ringPath(c,r))); c.fillStyle="rgba(8,12,17,.5)"; c.fill("evenodd"); }
+    if(selected&&!kreisView&&!deep){ const f=stateById(selected); c.beginPath(); c.rect(0,0,W,H); addRings(c,f.geometry); c.fillStyle="rgba(8,12,17,.5)"; c.fill("evenodd"); }
     if(kreisView){ c.beginPath(); gm.list.forEach(m=>{ if(m.kreis!==selGem.kreis) m.rings.forEach(r=>ringPath(c,r)); }); c.fillStyle="rgba(8,12,17,.45)"; c.fill("evenodd"); }
     [hover,selected].forEach(id=>{
-      if(!id||(kreisView&&id===selected)) return; const f=stateById(id); if(!f) return;
+      if(!id||((kreisView||deep)&&id===selected)) return; const f=stateById(id); if(!f) return;
       c.beginPath(); addRings(c,f.geometry);
       if(id===selected){ c.save(); c.shadowColor="rgba(67,211,173,.8)"; c.shadowBlur=12; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
       else { c.strokeStyle="rgba(238,244,247,.55)"; c.lineWidth=1.4; c.stroke(); }
@@ -507,25 +514,26 @@
     if(gm){
       if(selGem){ c.beginPath(); selGem.rings.forEach(r=>ringPath(c,r)); c.save(); c.shadowColor="rgba(67,211,173,.9)"; c.shadowBlur=10; c.strokeStyle="#43d3ad"; c.lineWidth=2.2; c.stroke(); c.restore(); }
       if(hoverGem&&hoverGem!==selGem){ c.beginPath(); hoverGem.rings.forEach(r=>ringPath(c,r)); c.strokeStyle="rgba(238,244,247,.85)"; c.lineWidth=1.4; c.stroke(); }
-      // Wettersymbole: Gefahren zuerst, dann große Gemeinden; ohne Überlappung
-      const sz=W<420?12:14; taken=[];
-      c.font=`${sz}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; c.textAlign="center"; c.textBaseline="middle";
-      gm.list.map(m=>({m,st:gemState(m,idx),a:(m.b[2]-m.b[0])*(m.b[3]-m.b[1])}))
-        .sort((x,y)=>(y.st.lv>=2)-(x.st.lv>=2)||y.st.lv-x.st.lv||y.a-x.a)
-        .forEach(({m,st})=>{
-          if(st.lv<2&&st.wx<0) return;
+      // Wettersymbole: Gefahren zuerst, dann große Gemeinden; ohne Überlappung mit Symbolen und Ortsnamen
+      const sz=W<420?12:14, h=sz*.6, sorted=gm.list.map(m=>({m,st:gemState(m,idx),a:(m.b[2]-m.b[0])*(m.b[3]-m.b[1])}))
+        .sort((x,y)=>(y.st.lv>=2)-(x.st.lv>=2)||y.st.lv-x.st.lv||y.a-x.a);
+      drawIcons=(boxes,haz)=>{
+        c.font=`${sz}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`; c.textAlign="center"; c.textBaseline="middle";
+        sorted.forEach(({m,st})=>{
+          if((st.lv>=2)!==haz||st.lv<2&&st.wx<0) return;
           const q=px(m.c[0],m.c[1]); if(q[0]<8||q[1]<8||q[0]>W-8||q[1]>H-8) return;
-          const gap=sz*1.35; if(taken.some(o=>Math.abs(o[0]-q[0])<gap&&Math.abs(o[1]-q[1])<gap)) return;
-          taken.push(q); c.fillText(st.lv>=2?(ICON[st.hz]||"⚠"):WX[st.wx][0],q[0],q[1]);
+          const gap=sz*2.1; if(taken.some(o=>Math.abs(o[0]-q[0])<gap&&Math.abs(o[1]-q[1])<gap)) return;
+          if(boxes.some(b=>q[0]+h>b[0]&&q[0]-h<b[2]&&q[1]+h>b[1]&&q[1]-h<b[3])) return;
+          taken.push(q); boxes.push([q[0]-h,q[1]-h,q[0]+h,q[1]+h]); c.fillText(st.lv>=2?(ICON[st.hz]||"⚠"):WX[st.wx][0],q[0],q[1]);
         });
-      c.textAlign="left";
+        c.textAlign="left"; c.textBaseline="middle";
+      };
     }
 
     // Städte (mehr Namen, je näher herangezoomt; ohne Überlappung)
     const small=W<420, z=zoomLevel(), boxes=[];
     const drawn=new Set();
-    // Wettersymbole der Gemeinden freihalten
-    const gap=(W<420?12:14)*.7; taken.forEach(q=>boxes.push([q[0]-gap,q[1]-gap,q[0]+gap,q[1]+gap]));
+    if(drawIcons) drawIcons(boxes,true);   // Warn-Symbole haben Vorrang vor allen Namen
     c.font=`500 ${small?10:11}px "Exo 2", system-ui, sans-serif`; c.textBaseline="middle";
     if(!(gm&&z>=2.6)) CITIES.forEach(([name,lon,lat,tier])=>{
       if(tier===2&&z<1.6) return; if(tier===0&&small&&z<1.6) return;
@@ -538,26 +546,35 @@
       drawn.add(name);
     });
     // Herangezoomt: Orte der sichtbaren Bundesländer, wichtige zuerst, ohne Überlappung
-    if(z>=1.8){
-      let count=0; const maxLabels=small?90:220;
+    // Reihenfolge: Städte → Wettersymbole → Bezirke, Stadtteile, Dörfer
+    let count=0; const maxLabels=small?90:220;
+    const drawOrte=(rMin,rMax)=>{ if(z<1.8) return;
       states.forEach(f=>{
         const id=f.properties.id, b=stateBox[id]||(stateBox[id]=bboxOf(f.geometry));
         if(b[0]>V.maxLon||b[2]<V.minLon||b[1]>V.maxLat||b[3]<V.minLat) return;
         const o=orte[id]; if(!o){ loadOrte(id); return; } if(!o.n) return;
+        c.globalAlpha=selected&&id!==selected?.5:1;   // Nachbarländer im abgedunkelten Bereich leiser
         for(let i=0;i<o.n.length&&count<maxLabels;i++){
-          const r=o.t[i]; if(z<ORT_Z[r]) break;
+          const r=o.t[i]; if(r<rMin) continue; if(r>rMax||z<ORT_Z[r]) break;
           const lon=o.x[i], lat=o.y[i]; if(lon<V.minLon||lon>V.maxLon||lat<V.minLat||lat>V.maxLat) continue;
           const name=o.n[i]; if(r<=1&&drawn.has(name)) continue;
           const q=px(lon,lat); if(q[0]<2||q[1]<6||q[0]>W-20||q[1]>H-6) continue;
           if(boxes.some(b=>q[0]>b[0]-4&&q[0]<b[2]&&q[1]>b[1]-3&&q[1]<b[3]+3)) continue;
-          c.font=`${ORT_FONT[r]} "Exo 2", system-ui, sans-serif`;
-          const bw=c.measureText(name).width, bx=[q[0]-3,q[1]-7,q[0]+8+bw,q[1]+7];
+          const up=ORT_UP[r], label=up?name.toLocaleUpperCase("de"):name, dot=ORT_DOT[r];
+          c.font=`${ORT_FONT[r]} "Exo 2", system-ui, sans-serif`; c.letterSpacing=up?"1px":"0px";
+          c.textAlign=dot?"left":"center";
+          const bw=c.measureText(label).width, bx=dot?[q[0]-6,q[1]-10,q[0]+12+bw,q[1]+10]:[q[0]-bw/2-6,q[1]-10,q[0]+bw/2+6,q[1]+10];
           if(boxes.some(o=>bx[0]<o[2]&&bx[2]>o[0]&&bx[1]<o[3]&&bx[3]>o[1])) continue; boxes.push(bx); count++;
-          c.fillStyle=ORT_COL[r]; c.beginPath(); c.arc(q[0],q[1],r<=1?2.2:r===3?1.5:1.1,0,6.2832); c.fill();
-          c.lineWidth=3; c.strokeStyle="rgba(8,12,17,.78)"; c.strokeText(name,q[0]+5,q[1]); c.fillText(name,q[0]+5,q[1]);
+          c.fillStyle=ORT_COL[r]; if(dot){ c.beginPath(); c.arc(q[0],q[1],dot,0,6.2832); c.fill(); }
+          const tx=dot?q[0]+6:q[0];
+          c.lineJoin="round"; c.lineWidth=2.6; c.strokeStyle="rgba(10,15,21,.88)"; c.strokeText(label,tx,q[1]); c.fillText(label,tx,q[1]);
         }
       });
-    }
+      c.letterSpacing="0px"; c.textAlign="left"; c.globalAlpha=1;
+    };
+    drawOrte(0,1);
+    if(drawIcons) drawIcons(boxes,false);
+    drawOrte(2,6);
     dirty=false;
   }
 

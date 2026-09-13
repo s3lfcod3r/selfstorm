@@ -3,16 +3,21 @@
 // Nur gelegentlich neu ausführen.
 //
 // Format: { n: [Namen], t: "Rang je Ort", p: [lon, lat, …] in 1/1000 Grad ab (5°, 47°) }
-// Rang: 0 Großstadt · 1 Stadt · 2 Stadtteil · 3 Dorf · 4 Viertel · 5 Weiler — sortiert nach Rang
+// Rang: 0 Großstadt · 1 Stadt · 2 Bezirk · 3 Stadtteil · 4 Dorf · 5 Viertel · 6 Weiler — sortiert nach Rang
 import fs from "node:fs/promises";
 
-const RANK = { city: 0, town: 1, borough: 2, suburb: 2, village: 3, quarter: 4, hamlet: 5 };
+const RANK = { city: 0, town: 1, borough: 2, suburb: 3, village: 4, quarter: 5, hamlet: 6 };
 const Q = `[out:csv(::lat,::lon,place,name;false;"\\t")][timeout:250];
 area["ISO3166-1"="DE"][admin_level=2]->.de;
 (node["place"~"^(city|town|village|suburb|borough|quarter|hamlet)$"]["name"](area.de););out;`;
 
-const r = await fetch("https://overpass-api.de/api/interpreter", { method: "POST", body: new URLSearchParams({ data: Q }), headers: { "User-Agent": "SelfStorm-Karte (github.com/s3lfcod3r/selfstorm)", Accept: "*/*" } });
-if (!r.ok) throw new Error("Overpass HTTP " + r.status);
+// Overpass ist oft ausgelastet (504) → Ersatzserver probieren
+let r = null;
+for (const host of ["https://overpass-api.de", "https://overpass.kumi.systems", "https://overpass-api.de"]) {
+  r = await fetch(host + "/api/interpreter", { method: "POST", body: new URLSearchParams({ data: Q }), headers: { "User-Agent": "SelfStorm-Karte (github.com/s3lfcod3r/selfstorm)", Accept: "*/*" } }).catch(() => null);
+  if (r?.ok) break; console.log(host, r ? "HTTP " + r.status : "Netzwerkfehler");
+}
+if (!r?.ok) throw new Error("Overpass nicht erreichbar");
 const rows = (await r.text()).trim().split("\n").map(l => l.split("\t"));
 
 const geo = JSON.parse(await fs.readFile(new URL("./bundeslaender.geojson", import.meta.url), "utf8"));
