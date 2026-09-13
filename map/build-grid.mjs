@@ -80,8 +80,16 @@ for (let b = 0; b < grid.length; b += BATCH) {
     forecast_days: String(FORECAST_DAYS)
   });
   if (b) await sleep(PAUSE_MS);
-  let r = await fetch(FC, { method: "POST", body: p });
-  if (r.status === 429) { await sleep(65000); r = await fetch(FC, { method: "POST", body: p }); }
+  // Wiederholen bei 429/5xx und Verbindungsabbrüchen (Open-Meteo lässt Verbindungen gelegentlich ins Timeout laufen)
+  let r = null;
+  for (let tr = 0; tr < 5; tr++) {
+    if (tr) { console.log(`Batch ${b / BATCH + 1}: Versuch ${tr + 1}`); await sleep(tr * 30000); }
+    try { r = await fetch(FC, { method: "POST", body: p, signal: AbortSignal.timeout(60000) }); }
+    catch (e) { console.log("Netzwerkfehler:", e.cause?.code || e.message); r = null; continue; }
+    if (r.status === 429) { await sleep(65000); continue; }
+    if (r.status < 500) break;
+  }
+  if (!r) throw new Error("Open-Meteo nicht erreichbar bei Batch " + b);
   if (!r.ok) throw new Error("Open-Meteo HTTP " + r.status + " bei Batch " + b);
   const data = await r.json();
   const arr = Array.isArray(data) ? data : [data];
