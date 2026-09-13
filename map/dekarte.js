@@ -271,6 +271,7 @@
     const gw=(V.maxLon-V.minLon)*kx, gh=(V.maxLat-V.minLat), pad=14;
     scale=Math.min((W-2*pad)/gw,(H-2*pad)/gh); ox=(W-gw*scale)/2; oy=(H-gh*scale)/2;
     cellR=grid.step*scale*1.15; dirty=true;
+    cv.style.touchAction=isZoomed()?"none":"pan-y";
   }
   // Ausschnitt weich auf ein Bundesland (oder ganz Deutschland) fahren
   function zoomTo(id){
@@ -285,6 +286,22 @@
       const padLon=hw*.24+.08, padLat=hh*.24+.06;
       to={minLon:cx-hw-padLon,maxLon:cx+hw+padLon,minLat:cy-hh-padLat,maxLat:cy+hh+padLat}; }
     anim={from:{...V},to,start:performance.now()};
+  }
+  // Freies Verschieben/Zoomen: Ausschnitt nie größer als Deutschland, Mitte bleibt innerhalb
+  const isZoomed=()=>Math.max((V.maxLon-V.minLon)/(B.maxLon-B.minLon),(V.maxLat-V.minLat)/(B.maxLat-B.minLat))<.98;
+  function setView(v){
+    let vw=v.maxLon-v.minLon, vh=v.maxLat-v.minLat, cx=(v.minLon+v.maxLon)/2, cy=(v.minLat+v.maxLat)/2;
+    const s=Math.max(vw/(B.maxLon-B.minLon),vh/(B.maxLat-B.minLat)), mn=.35/vh;
+    if(s>1){ vw/=s; vh/=s; } else if(mn>1){ vw*=mn; vh*=mn; }
+    const lim=(c,lo,hi,w)=>lo+w*.3>hi-w*.3?(lo+hi)/2:Math.max(lo+w*.3,Math.min(hi-w*.3,c));
+    cx=lim(cx,B.minLon,B.maxLon,vw); cy=lim(cy,B.minLat,B.maxLat,vh);
+    anim=null; V={minLon:cx-vw/2,maxLon:cx+vw/2,minLat:cy-vh/2,maxLat:cy+vh/2}; setProj();
+    $("[data-zoomout]").hidden=!isZoomed()&&!selected;
+  }
+  function panBy(dx,dy){ setView({minLon:V.minLon-dx/(scale*kx),maxLon:V.maxLon-dx/(scale*kx),minLat:V.minLat+dy/scale,maxLat:V.maxLat+dy/scale}); }
+  function zoomAt(x,y,f){
+    const [lon,lat]=unpx(x,y);
+    setView({minLon:lon-(lon-V.minLon)/f,maxLon:lon+(V.maxLon-lon)/f,minLat:lat-(lat-V.minLat)/f,maxLat:lat+(V.maxLat-lat)/f});
   }
   const zoomLevel=()=>scale/fullScale;
   const px=(lon,lat)=>[ox+(lon-V.minLon)*kx*scale, oy+(V.maxLat-lat)*scale];
@@ -730,21 +747,48 @@
       else if(k===" "){ playing?pause():play(); e.preventDefault(); }
     });
 
-    $("[data-zoomout]").onclick=()=>{ if(selGem) selectGem(null); else select(null); };
+    $("[data-zoomout]").onclick=()=>{ if(selGem) selectGem(null); else if(selected) select(null); else zoomTo(null); };
     const at=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
     const stateAt=(x,y)=>{ const [lon,lat]=unpx(x,y); const f=states.find(f=>inGeom(lon,lat,f.geometry)); return f?f.properties.id:null; };
+
+    // Ziehen = verschieben (sobald herangezoomt), zwei Finger = zoomen, Mausrad = zoomen
+    const ptrs=new Map(); let moved=0, pinch=null, noClick=false;
+    const pinchOf=()=>{ const [a,b]=[...ptrs.values()]; return {d:Math.hypot(a[0]-b[0],a[1]-b[1]),m:[(a[0]+b[0])/2,(a[1]+b[1])/2]}; };
+    cv.addEventListener("pointerdown",e=>{
+      ptrs.set(e.pointerId,at(e)); moved=0; noClick=false;
+      if(ptrs.size===2){ pinch=pinchOf(); noClick=true; }
+    });
     cv.addEventListener("pointermove",e=>{
-      if(e.pointerType==="touch") return;
+      if(!ptrs.has(e.pointerId)) return;
+      if(e.pointerType==="mouse"&&!e.buttons){ ptrs.delete(e.pointerId); return; }
+      const p=at(e), q=ptrs.get(e.pointerId); ptrs.set(e.pointerId,p);
+      if(ptrs.size===2&&pinch){ const n=pinchOf(); zoomAt(n.m[0],n.m[1],n.d/pinch.d); panBy(n.m[0]-pinch.m[0],n.m[1]-pinch.m[1]); pinch=n; return; }
+      moved+=Math.hypot(p[0]-q[0],p[1]-q[1]);
+      if(moved>6&&isZoomed()){
+        if(!cv.hasPointerCapture(e.pointerId)) cv.setPointerCapture(e.pointerId);
+        noClick=true; tip.hidden=true; hover=hoverGem=null; cv.style.cursor="grabbing"; panBy(p[0]-q[0],p[1]-q[1]);
+      }
+    });
+    const up=e=>{ ptrs.delete(e.pointerId); if(ptrs.size<2) pinch=null; if(cv.style.cursor==="grabbing") cv.style.cursor="grab"; };
+    cv.addEventListener("pointerup",up); cv.addEventListener("pointercancel",up);
+    cv.addEventListener("wheel",e=>{
+      if(!isZoomed()&&!e.ctrlKey&&e.deltaY>0) return;   // ganz Deutschland + runterscrollen: Seite scrollt normal
+      e.preventDefault(); const [x,y]=at(e); zoomAt(x,y,Math.exp(-e.deltaY*(e.ctrlKey?.01:.0015)));
+    },{passive:false});
+
+    cv.addEventListener("pointermove",e=>{
+      if(e.pointerType==="touch"||noClick&&ptrs.size) return;
       const [x,y]=at(e), id=stateAt(x,y), [lon,lat]=unpx(x,y);
       const m=id&&id===selected?gemAt(lon,lat):null;
       if(m!==hoverGem){ hoverGem=m; dirty=true; }
       const hv=m?null:id; if(hv!==hover){ hover=hv; dirty=true; }
-      cv.style.cursor=id?"pointer":"default";
+      cv.style.cursor=id?"pointer":isZoomed()?"grab":"default";
       if(!id){ tip.hidden=true; hoverPt=null; return; }
       if(m) showGemTip(m,x,y); else showTip(id,x,y);
     });
     cv.addEventListener("pointerleave",()=>{ if(hover||hoverGem){ hover=null; hoverGem=null; dirty=true; } tip.hidden=true; hoverPt=null; });
     cv.addEventListener("click",e=>{
+      if(noClick){ noClick=false; return; }
       const [x,y]=at(e), id=stateAt(x,y), [lon,lat]=unpx(x,y);
       const m=id&&id===selected?gemAt(lon,lat):null;
       if(m) selectGem(m); else select(id);
