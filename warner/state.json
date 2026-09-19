@@ -1,7 +1,16 @@
 {
   "53.6,10.15": {
-    "level": 0,
+    "level": 3,
     "date": "2026-09-19",
-    "events": []
+    "events": [
+      {
+        "cat": "dwd:Sturmböen",
+        "level": 3,
+        "label": "Sturmböen",
+        "peakTime": null,
+        "start": null,
+        "end": null
+      }
+    ]
   }
 }
