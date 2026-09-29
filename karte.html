@@ -28,6 +28,7 @@
   .note{margin-top:18px;background:color-mix(in srgb, var(--self-yellow) 8%, transparent);border:1px solid color-mix(in srgb, var(--self-yellow) 26%, transparent);border-radius:12px;padding:12px 15px;color:color-mix(in srgb, var(--self-yellow) 60%, var(--self-text));font-size:.84rem}
   footer{margin-top:26px;color:var(--self-text-3);font-size:.8rem;text-align:center}
 </style>
+<link rel="stylesheet" href="bbk.css" />
 </head>
 <body>
 <div class="wrap">
@@ -46,8 +47,22 @@
     Im Ernstfall gilt der DWD (WarnWetter / NINA).
   </div>
 
-  <footer>Datengrundlage: Open-Meteo (Raster alle 6 Stunden neu vorgerechnet) · DWD-Warnungen via Bright Sky · Teil der Self-Reihe</footer>
+  <section id="bbk" class="bbk-panel" aria-labelledby="bbk-heading">
+  <h2 id="bbk-heading">BBK · Bevölkerungsschutz bundesweit</h2>
+  <p>MoWaS-Meldungen für ganz Deutschland. Für örtliche Wetterwarnungen siehe die DWD-Anzeige.</p>
+  <p data-bbk-status role="status">Meldungen werden geladen…</p>
+  <button type="button" data-bbk-refresh>Aktualisieren</button>
+  <details open>
+    <summary>Meldungen anzeigen</summary>
+    <ul data-bbk-list class="bbk-list"></ul>
+  </details>
+  <a href="https://warnung.bund.de/meldungen" target="_blank" rel="noopener noreferrer">Originalmeldungen und Handlungsempfehlungen beim BBK</a>
+  <p>Quelle: BBK / MoWaS · Aktualisierung alle 5 Minuten bei geöffneter Seite.</p>
+</section>
+
+<footer>Datengrundlage: Open-Meteo (Raster alle 6 Stunden neu vorgerechnet) · DWD-Warnungen via Bright Sky · Teil der Self-Reihe</footer>
 </div>
 <script src="map/dekarte.js"></script>
+<script src="bbk.js"></script>
 </body>
 </html>

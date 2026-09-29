@@ -275,6 +275,7 @@
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px;flex-wrap:wrap}
   .toolbar .updated{color:var(--muted);font-size:.82rem}
 </style>
+<link rel="stylesheet" href="bbk.css" />
 </head>
 <body>
 <div class="wrap">
@@ -368,7 +369,20 @@
     Im Ernstfall gilt immer der Deutsche Wetterdienst (WarnWetter-App / NINA).
   </div>
 
-  <footer>
+  <section id="bbk" class="bbk-panel" aria-labelledby="bbk-heading">
+  <h2 id="bbk-heading">BBK · Bevölkerungsschutz bundesweit</h2>
+  <p>MoWaS-Meldungen für ganz Deutschland. Für örtliche Wetterwarnungen siehe die DWD-Anzeige.</p>
+  <p data-bbk-status role="status">Meldungen werden geladen…</p>
+  <button type="button" data-bbk-refresh>Aktualisieren</button>
+  <details open>
+    <summary>Meldungen anzeigen</summary>
+    <ul data-bbk-list class="bbk-list"></ul>
+  </details>
+  <a href="https://warnung.bund.de/meldungen" target="_blank" rel="noopener noreferrer">Originalmeldungen und Handlungsempfehlungen beim BBK</a>
+  <p>Quelle: BBK / MoWaS · Aktualisierung alle 5 Minuten bei geöffneter Seite.</p>
+</section>
+
+<footer>
     Datenquellen: Open-Meteo (mehrere Wettermodelle), Zippopotam (PLZ).<br>
     Teil der <a href="https://selfcoder.de" target="_blank" rel="noopener">Self-Reihe</a> · selbst gehostet, datensparsam.
   </footer>
@@ -578,19 +592,30 @@
   }
 
   // ---------- Amtliche DWD-Warnungen (Bright Sky) ----------
-  async function alerts(loc){
-    try{
-      const r=await fetch(`https://api.brightsky.dev/alerts?lat=${loc.lat}&lon=${loc.lon}&tz=Europe/Berlin`);
-      if(!r.ok) throw 0;
-      const j=await r.json();
-      const SEVLV={minor:2,moderate:3,severe:4,extreme:4};
-      const items=(j.alerts||[]).map(x=>({
-        event:x.event_de||x.event_en||"Warnung", sev:x.severity,
-        onset:x.onset, expires:x.expires, instruction:x.instruction_de||""
-      }));
-      const level=items.reduce((m,i)=>Math.max(m,SEVLV[i.sev]||2),0);
-      return {level, items, cell:(j.location&&j.location.name)||""};
-    }catch(e){ return {level:0, items:[]}; }
+  function alerts(loc) {
+    return fetch(`https://api.brightsky.dev/alerts?lat=${loc.lat}&lon=${loc.lon}&tz=Europe/Berlin`,
+      { signal: AbortSignal.timeout(12000) })
+      .then(r => {
+        if (!r.ok) throw new Error('Fetch failed');
+        return r.json();
+      })
+      .then(j => {
+        if (!j || !Array.isArray(j.alerts)) throw new Error('Bad shape');
+        const SEVLV = { minor: 2, moderate: 3, severe: 4, extreme: 4 };
+        const whitelist = ['minor','moderate','severe','extreme'];
+        const isValidSeverity = v => typeof v === 'string' && whitelist.includes(v);
+        const items = j.alerts.map(x => ({
+          event: x.event_de || x.event_en || 'Warnung',
+          sev: isValidSeverity(x.severity) ? x.severity : 'minor',
+          onset: x.onset,
+          expires: x.expires,
+          instruction: x.instruction_de || ''
+        }));
+        const levels = items.map(i => SEVLV[i.sev] || 0);
+        const level = Math.max(...(levels.length ? levels : [0]));
+        return { level, items, cell: (j.location && j.location.name) || '', unknown: false };
+      })
+      .catch(() => ({ level: 0, items: [], unknown: true }));
   }
 
   // ---------- Rendering ----------
@@ -790,7 +815,7 @@
     }
     return `<div class="trust"><span class="dot"></span>`
       +(confTxt?`<b>Vertrauen: ${confTxt}</b> · `:"")
-      +modelTxt+` · ${hasDwd?"amtliche Warnung liegt vor":"keine amtliche Warnung"}</div>`;
+      +modelTxt+` · ${(!dwd || dwd.unknown) ? 'Amtliche Warnungen nicht abrufbar' : (hasDwd ? 'amtliche Warnung liegt vor' : 'keine amtliche Warnung')}</div>`;
   }
   function detailsFooterHtml(fc, a, con, dwd){
     return `<div class="det-foot">
@@ -826,6 +851,7 @@
     return (s?("ab "+s):"")+(e?(" bis "+e+" Uhr"):"");
   }
   function dwdHtml(dwd){
+    if (!dwd || dwd.unknown) return '<div class="dwd">Amtliche Warnungen nicht abrufbar. <a href="https://warnung.bund.de/meldungen" target="_blank" rel="noopener noreferrer">Warnmeldungen beim BBK prüfen</a></div>';
     if(!dwd||!dwd.items||!dwd.items.length) return "";
     return `<div class="dwd">
       <div class="dwd-h">Amtliche DWD-Warnung${dwd.items.length>1?"en":""}${dwd.cell?` · ${escapeHtml(dwd.cell)}`:""}</div>`+
@@ -1012,5 +1038,6 @@
 </script>
 
 <script src="map/dekarte.js"></script>
+<script src="bbk.js"></script>
 </body>
 </html>

@@ -1,0 +1,14 @@
+.bbk-panel { padding:1rem; border:1px solid var(--self-line); border-radius:.5rem; color:var(--self-text); background:var(--self-bg-0); }
+.bbk-list { list-style:none; margin:0; padding:0; max-height:24rem; overflow:auto; }
+.bbk-item { border:1px solid var(--self-line); border-radius:.25rem; padding:.5rem; margin:.5rem 0; word-break:break-word; }
+.bbk-item a { color:var(--self-teal); text-decoration:none; }
+.bbk-meta { color:var(--self-text-2); font-size:.85rem; }
+
+.bbk-panel{margin-block:1.5rem;font:inherit}
+.bbk-panel a{color:var(--self-teal)}
+.bbk-panel button{color:var(--self-text);background:var(--self-bg-0);border:1px solid var(--self-line);padding:.5rem .8rem;border-radius:.4rem;cursor:pointer}
+.bbk-panel button:disabled{opacity:.6;cursor:wait}
+.bbk-panel summary{cursor:pointer}
+.bbk-panel button:focus-visible,.bbk-panel summary:focus-visible{outline:2px solid var(--self-teal);outline-offset:3px}
+
+.bbk-panel button { font: inherit; }
