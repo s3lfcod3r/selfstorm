@@ -66,30 +66,35 @@ async function fetchBbk(fetcher=fetch){
 }
 
 function mountBbk(root){
-  const list=root.querySelector('[data-bbk-list]');
-  const status=root.querySelector('[data-bbk-status]');
-  const button=root.querySelector('[data-bbk-refresh]');
-  let busy=false;
-  async function reload(){
-    if(busy)return;
-    busy=true;
-    button.disabled=true;
-    status.textContent='BBK-Meldungen werden geladen…';
-    try{
-      const items=await fetchBbk();
-      renderBbk(list,items);
-      status.textContent=items.length+' Meldungen · Abruf '+new Date().toLocaleString('de-DE',{timeZone:'Europe/Berlin'})+' Uhr';
-    }catch(e){
-      list.replaceChildren();
-      status.textContent='BBK-Meldungen nicht abrufbar. Bitte die Originalübersicht auf warnung.bund.de prüfen.';
-    }finally{
-      busy=false;
-      button.disabled=false;
-    }
+ const list=root.querySelector('[data-bbk-list]');
+ const status=root.querySelector('[data-bbk-status]');
+ const btn=root.querySelector('[data-bbk-refresh]');
+ let busy=false, interval=null;
+ const view=window.BbkView;
+ const updateView=(items,stat)=>{ if(view&&typeof view.update==='function'){ view.update(items,stat); } };
+ async function reload(){
+  if(busy) return; busy=true; btn.disabled=true;
+  try{
+   updateView([], 'loading');
+   const items=await fetchBbk();
+   renderBbk(list, items);
+   status.textContent='Warngebiete werden geladen…';
+   const enriched=await window.BbkGeo.loadGeometries(items);
+   updateView(enriched,'ready');
+   const missing=enriched.filter(i=>i.geometryStatus!=='ready').length;
+   const time=new Intl.DateTimeFormat('de-DE',{timeZone:'Europe/Berlin',dateStyle:'medium',timeStyle:'short'}).format(new Date());
+   status.textContent=`${items.length} Meldungen. ${missing>0?missing+' Warngebiete nicht verfügbar.':''} Abruf ${time}.`;
+  } catch(err){
+   list.replaceChildren();
+   updateView([], 'error');
+   status.textContent='BBK-Meldungen nicht abrufbar. Bitte warnung.bund.de prüfen.';
+  } finally{
+   busy=false; btn.disabled=false;
   }
-  button.addEventListener('click',reload);
-  reload();
-  setInterval(()=>{if(!document.hidden)reload();},300000);
+ }
+ btn.addEventListener('click',reload);
+ interval=setInterval(()=>{ if(!document.hidden && !busy) reload(); },300000);
+ reload();
 }
 if(typeof module==='object'&&module.exports)module.exports={normalizeBbk,fetchBbk,renderBbk,mountBbk};
 if(typeof document!=='undefined'){

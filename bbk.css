@@ -12,3 +12,7 @@
 .bbk-panel button:focus-visible,.bbk-panel summary:focus-visible{outline:2px solid var(--self-teal);outline-offset:3px}
 
 .bbk-panel button { font: inherit; }
+.bbk-panel select{max-width:100%;padding:.5rem;color:var(--self-text);background:var(--self-bg-0);border:1px solid var(--self-line)}
+.bbk-panel label{margin-right:1rem}
+.bbk-panel input[type=checkbox]{accent-color:#c084fc}
+.bbk-panel h4{margin:.2rem 0}

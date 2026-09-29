@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const { normalizeGeo, contains } = require('../bbk-geo.js');
+const poly = { type: 'Polygon', coordinates: [[[0,0],[10,0],[10,10],[0,10],[0,0]], [[3,3],[7,3],[7,7],[3,7],[3,3]]] };
+const fc = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: poly }] };
+const geos = normalizeGeo(fc);
+assert.equal(contains(geos, 1, 1), true);
+assert.equal(contains(geos, 11, 5), false);
+assert.equal(contains(geos, 5, 5), false);
+assert.equal(contains(geos, 0, 5), true);
+assert.equal(contains(geos, 3, 5), true);
+assert.equal(contains(geos, NaN, 5), false);
+assert.throws(() => normalizeGeo({ type: 'FeatureCollection', features: [{ geometry: { type: 'Polygon', coordinates: [] } }] }));
+console.log('PASS geometry');

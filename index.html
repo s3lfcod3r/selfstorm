@@ -406,7 +406,10 @@
   let locations=load();
 
   function load(){ try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]} }
-  function save(){ localStorage.setItem(KEY, JSON.stringify(locations)); }
+  function save(){
+  localStorage.setItem(KEY, JSON.stringify(locations));
+  window.dispatchEvent(new Event('selfstorm:locations'));
+}
   function id(l){ return l.lat.toFixed(3)+","+l.lon.toFixed(3); }
 
   // ---------- Suche ----------
@@ -1038,6 +1041,8 @@
 </script>
 
 <script src="map/dekarte.js"></script>
+<script src="bbk-geo.js"></script>
+<script src="bbk-view.js"></script>
 <script src="bbk.js"></script>
 </body>
 </html>
