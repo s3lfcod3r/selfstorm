@@ -592,6 +592,8 @@
     ctx.setTransform(DPR,0,0,DPR,0,0);
 
 
+    if(window.BbkView) window.BbkView.draw(ctx,px);
+
     // Gewählter Hover-Punkt
     if(hoverPt){ ctx.beginPath(); ctx.arc(hoverPt[0],hoverPt[1],4,0,6.2832); ctx.fillStyle="rgba(238,244,247,.9)"; ctx.fill(); }
 
@@ -861,6 +863,7 @@
       const [x,y]=at(e), id=stateAt(x,y), [lon,lat]=unpx(x,y);
       const m=id&&id===selected?gemAt(lon,lat):null;
       if(m) selectGem(m); else select(id);
+      if(window.BbkView) window.BbkView.pick(lon,lat);
       if(e.pointerType==="touch"||!matchMedia("(hover:hover)").matches){ if(m) showGemTip(m,x,y); else if(id) showTip(id,x,y); else tip.hidden=true; }
       if(id&&window.innerWidth<760) $("[data-side]").scrollIntoView({behavior:"smooth",block:"nearest"});
     });
