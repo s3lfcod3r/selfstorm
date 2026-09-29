@@ -64,6 +64,7 @@ const matches = (items, lon, lat, now = Date.now()) =>
     if (!(s <= now && now < e)) return false;
     return contains(i.geometries || [], lon, lat);
   });
+const geomCache = new Map();
 async function loadGeometries(items, fetcher = fetch) {
   const results = new Array(items.length);
   let next = 0;
@@ -71,6 +72,11 @@ async function loadGeometries(items, fetcher = fetch) {
     while (next < items.length) {
       const index = next++;
       const item = items[index];
+      const cached = geomCache.get(item.id);
+      if (cached) {
+        results[index] = { ...item, geometries: cached, geometryStatus: 'ready' };
+        continue;
+      }
       try {
         const url = `https://warnung.bund.de/api31/warnings/${encodeURIComponent(item.id)}.geojson`;
         const response = await fetcher(url, {
@@ -79,6 +85,10 @@ async function loadGeometries(items, fetcher = fetch) {
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const geometries = normalizeGeo(await response.json());
+        if (geometries.length) {
+          if (geomCache.size > 300) geomCache.clear();
+          geomCache.set(item.id, geometries);
+        }
         results[index] = { ...item, geometries, geometryStatus: geometries.length ? 'ready' : 'missing' };
       } catch {
         results[index] = { ...item, geometries: [], geometryStatus: 'error' };
@@ -88,7 +98,7 @@ async function loadGeometries(items, fetcher = fetch) {
   await Promise.all(Array.from({ length: Math.min(4, items.length) }, () => worker()));
   return results;
 }
-const api = {normalizeGeo, contains, matches, loadGeometries};
+const api = {normalizeGeo, contains, matches, loadGeometries, geomCache};
 if (typeof module === 'object' && module.exports) module.exports = api;
 if (typeof window !== 'undefined') window.BbkGeo = api;
 return api;
