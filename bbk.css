@@ -16,3 +16,5 @@
 .bbk-panel label{margin-right:1rem}
 .bbk-panel input[type=checkbox]{accent-color:#c084fc}
 .bbk-panel h4{margin:.2rem 0}
+.bbk-panel [data-reset]{margin-left:.5rem}
+.bbk-panel .bbk-cancel h4{opacity:.85}

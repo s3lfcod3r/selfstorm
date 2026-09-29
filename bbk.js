@@ -69,7 +69,7 @@ function mountBbk(root){
  const list=root.querySelector('[data-bbk-list]');
  const status=root.querySelector('[data-bbk-status]');
  const btn=root.querySelector('[data-bbk-refresh]');
- let busy=false, interval=null;
+ let busy=false, interval=null, lastLoad=0;
  const view=window.BbkView;
  const updateView=(items,stat)=>{ if(view&&typeof view.update==='function'){ view.update(items,stat); } };
  async function reload(){
@@ -89,11 +89,12 @@ function mountBbk(root){
    updateView([], 'error');
    status.textContent='BBK-Meldungen nicht abrufbar. Bitte warnung.bund.de prüfen.';
   } finally{
-   busy=false; btn.disabled=false;
+   busy=false; btn.disabled=false; lastLoad=Date.now();
   }
  }
  btn.addEventListener('click',reload);
  interval=setInterval(()=>{ if(!document.hidden && !busy) reload(); },300000);
+ document.addEventListener('visibilitychange',()=>{ if(!document.hidden && !busy && Date.now()-lastLoad>300000) reload(); });
  reload();
 }
 if(typeof module==='object'&&module.exports)module.exports={normalizeBbk,fetchBbk,renderBbk,mountBbk};
