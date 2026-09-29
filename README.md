@@ -61,3 +61,10 @@ confident a warning is.
 ## 📄 Lizenz / License
 
 MIT
+
+## BBK-Warnmeldungen
+Zeigt die bundesweite MoWaS-Liste auf Haupt- und Kartenseite. Keine automatische Ortszuordnung. DWD-Meldungen sind separat. Entwarnungen sind beschriftet, abgelaufene Meldungen werden ausgefiltert. Quellen: [Übersicht](https://warnung.bund.de/meldungen) · [JSON](https://warnung.bund.de/api31/mowas/mapData.json). Aktualisierung alle 5 min (solange Tab sichtbar) plus manueller Refresh. Netzwerk-/Formatfehler werden als „nicht abrufbar“ angezeigt.
+
+Testbefehle:
+node tests/bbk.cjs
+node tests/bbk-fetch.cjs
