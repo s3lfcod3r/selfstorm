@@ -78,7 +78,7 @@ async function loadGeometries(items, fetcher = fetch) {
         continue;
       }
       try {
-        const url = `https://warnung.bund.de/api31/warnings/${encodeURIComponent(item.id)}.geojson`;
+        const url = `bbk/${encodeURIComponent(item.id)}.geojson`;
         const response = await fetcher(url, {
           cache: 'no-store',
           signal: AbortSignal.timeout(12000)

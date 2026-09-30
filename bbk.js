@@ -60,7 +60,7 @@ function renderBbk(list, items) {
 }
 
 async function fetchBbk(fetcher=fetch){
-  const r=await fetcher('https://warnung.bund.de/api31/mowas/mapData.json',{signal:AbortSignal.timeout(12000),cache:'no-store'});
+  const r=await fetcher('bbk/mapData.json',{signal:AbortSignal.timeout(12000),cache:'no-store'});
   if(!r.ok) throw new Error('BBK HTTP '+r.status);
   return normalizeBbk(await r.json());
 }

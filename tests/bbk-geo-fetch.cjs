@@ -5,7 +5,7 @@ const input = [{ id: 'ok' }, { id: 'empty' }, { id: 'http' }, { id: 'bad' }];
 const valid = { type: 'FeatureCollection', features: [{ geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } }] };
 
 async function mock(url, options) {
-  assert(url.startsWith('https://warnung.bund.de/api31/warnings/'));
+  assert(url.startsWith('bbk/'));
   assert(options.signal);
   if (url.includes('/http.')) return { ok: false, status: 500 };
   return { ok: true, json: async () => {
