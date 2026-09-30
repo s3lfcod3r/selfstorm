@@ -1,0 +1,38 @@
+name: SelfStorm BBK
+
+on:
+  schedule:
+    - cron: "*/10 * * *"   # alle 10 Minuten (UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bbk
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: BBK-Daten spiegeln
+        working-directory: warner
+        run: node bbk-sync.mjs
+
+      - name: bbk/ committen
+        run: |
+          if ! git diff --quiet -- bbk; then
+            git config user.name "selfstorm-bot"
+            git config user.email "bot@selfcoder.de"
+            git add bbk
+            git commit -m "chore(bbk): Daten aktualisiert [skip ci]"
+            git push
+          else
+            echo "keine Änderung an bbk/"
+          fi
