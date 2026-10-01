@@ -2,7 +2,7 @@ name: SelfStorm BBK
 
 on:
   schedule:
-    - cron: "*/10 * * *"   # alle 10 Minuten (UTC)
+    - cron: "*/10 * * * *"   # alle 10 Minuten (UTC)
   workflow_dispatch:
 
 permissions:
@@ -27,12 +27,13 @@ jobs:
 
       - name: bbk/ committen
         run: |
-          if ! git diff --quiet -- bbk; then
-            git config user.name "selfstorm-bot"
-            git config user.email "bot@selfcoder.de"
-            git add bbk
-            git commit -m "chore(bbk): Daten aktualisiert [skip ci]"
-            git push
-          else
+          git add -A bbk
+          if git diff --cached --quiet; then
             echo "keine Änderung an bbk/"
+            exit 0
           fi
+          git config user.name "selfstorm-bot"
+          git config user.email "bot@selfcoder.de"
+          git commit -m "chore(bbk): Daten aktualisiert [skip ci]"
+          git pull --rebase origin main
+          git push

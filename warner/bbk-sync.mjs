@@ -17,9 +17,8 @@ const NOW = Date.now();
 const TIMEOUT_MS = 30000;
 const UA = 'SelfStorm-bot/1.0 (wetter.selfcoder.de)';
 
-function isActive(x) {
+function isNotExpired(x) {
   if (!x || typeof x !== 'object') return false;
-  if (x.type !== 'Alert' && x.type !== 'Update') return false;
   if (x.expiresDate == null) return true;
   const ts = Date.parse(x.expiresDate);
   return !Number.isNaN(ts) && ts > NOW;
@@ -48,7 +47,7 @@ async function main() {
 
   const wanted = new Set();
   for (const x of raw) {
-    if (x && typeof x.id === 'string' && x.id.length > 0 && isActive(x)) wanted.add(x.id);
+    if (x && typeof x.id === 'string' && x.id.length > 0 && isNotExpired(x)) wanted.add(x.id);
   }
 
   for (const id of wanted) {
