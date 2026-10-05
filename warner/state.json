@@ -1,16 +1,7 @@
 {
   "53.6,10.15": {
-    "level": 3,
+    "level": 0,
     "date": "2026-10-05",
-    "events": [
-      {
-        "cat": "wx:7",
-        "level": 3,
-        "label": "dichter Nebel",
-        "peakTime": "2026-10-07T08:00",
-        "start": "2026-10-07T05:00",
-        "end": "2026-10-07T09:00"
-      }
-    ]
+    "events": []
   }
 }
