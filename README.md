@@ -60,7 +60,21 @@ confident a warning is.
 
 ## 📄 Lizenz / License
 
-MIT
+**🇩🇪 Alle Rechte vorbehalten.** © 2026 s3lfcod3r / SelfCoder
+
+Du darfst die Software **privat und nicht-kommerziell** installieren und benutzen (z. B. im Homelab, über Docker oder Unraid).
+
+**Ohne schriftliche Erlaubnis verboten:** kommerzielle Nutzung · Kopieren · Verändern · Weitergeben · Einbauen in eigene Projekte (auch Closed Source) · Verkaufen.
+
+Details: [LICENSE](LICENSE)
+
+**🇬🇧 All rights reserved.** © 2026 s3lfcod3r / SelfCoder
+
+You may install and use the software **privately and non-commercially** (e.g. in your home lab, via Docker or Unraid).
+
+**Not permitted without written permission:** commercial use · copying · modifying · redistributing · incorporating into other projects (including closed source) · selling.
+
+Details: [LICENSE](LICENSE)
 
 ## BBK-Warnmeldungen
 Zeigt die bundesweite MoWaS-Liste auf Haupt- und Kartenseite. Keine automatische Ortszuordnung. DWD-Meldungen sind separat. Entwarnungen sind beschriftet, abgelaufene Meldungen werden ausgefiltert. Quellen: [Übersicht](https://warnung.bund.de/meldungen) · [JSON](https://warnung.bund.de/api31/mowas/mapData.json). Aktualisierung alle 5 min (solange Tab sichtbar) plus manueller Refresh. Netzwerk-/Formatfehler werden als „nicht abrufbar“ angezeigt.
