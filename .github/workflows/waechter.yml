@@ -16,11 +16,11 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: nodemailer installieren
         working-directory: warner
@@ -45,6 +45,7 @@ jobs:
             git config user.email "bot@selfcoder.de"
             git add warner/state.json
             git commit -m "chore(waechter): Alarm-Status aktualisiert [skip ci]"
+            git pull --rebase origin main
             git push
           else
             echo "kein State-Wechsel"

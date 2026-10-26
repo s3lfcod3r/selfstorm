@@ -12,7 +12,7 @@ const STEP = 0.2;          // Rasterweite in Grad (~14–22 km)
 // Feinere Details lädt die Karte beim Hineinzoomen im Browser nach (map/dekarte.js).
 const FORECAST_DAYS = 3;   // ~72 Stunden (deckt auch übermorgen ab)
 const BATCH = 100;         // Koordinaten pro API-Aufruf
-const PAUSE_MS = 7000;     // Pause zwischen Batches (Limit 600 Abrufe/Minute)
+const PAUSE_MS = 15000;    // Pause zwischen Batches: 100 Abrufe je Batch, Limit 600 Abrufe/Minute
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 const geo = JSON.parse(await fs.readFile(new URL("./germany.geojson", import.meta.url), "utf8"));
@@ -80,18 +80,25 @@ for (let b = 0; b < grid.length; b += BATCH) {
     forecast_days: String(FORECAST_DAYS)
   });
   if (b) await sleep(PAUSE_MS);
-  // Wiederholen bei 429/5xx und Verbindungsabbrüchen (Open-Meteo lässt Verbindungen gelegentlich ins Timeout laufen)
-  let r = null;
-  for (let tr = 0; tr < 5; tr++) {
+  // Wiederholen bei 429/5xx, Verbindungsabbrüchen und hängendem Antwort-Body
+  // (Open-Meteo lässt Verbindungen gelegentlich ins Timeout laufen). Das Lesen des
+  // Bodys gehört mit in den Versuch: der Timeout bricht auch dort ab.
+  let data = null, lastErr = "";
+  for (let tr = 0; tr < 5 && !data; tr++) {
     if (tr) { console.log(`Batch ${b / BATCH + 1}: Versuch ${tr + 1}`); await sleep(tr * 30000); }
-    try { r = await fetch(FC, { method: "POST", body: p, signal: AbortSignal.timeout(60000) }); }
-    catch (e) { console.log("Netzwerkfehler:", e.cause?.code || e.message); r = null; continue; }
-    if (r.status === 429) { await sleep(65000); continue; }
-    if (r.status < 500) break;
+    try {
+      const r = await fetch(FC, { method: "POST", body: p, signal: AbortSignal.timeout(60000) });
+      if (r.status === 429) { lastErr = "HTTP 429"; await sleep(65000); continue; }
+      if (r.status >= 500) { lastErr = "HTTP " + r.status; continue; }
+      if (!r.ok) { lastErr = "HTTP " + r.status; break; }
+      data = await r.json();
+    } catch (e) { lastErr = e.cause?.code || e.name || e.message; console.log("Netzwerkfehler:", lastErr); }
   }
-  if (!r) throw new Error("Open-Meteo nicht erreichbar bei Batch " + b);
-  if (!r.ok) throw new Error("Open-Meteo HTTP " + r.status + " bei Batch " + b);
-  const data = await r.json();
+  if (!data) {
+    // Kein harter Fehler: die alte grid.json bleibt stehen, der nächste Lauf (in 6 h) holt nach.
+    console.log(`::warning::Open-Meteo nicht erreichbar bei Batch ${b / BATCH + 1} (${lastErr}) — Raster bleibt auf altem Stand`);
+    process.exit(0);
+  }
   const arr = Array.isArray(data) ? data : [data];
   arr.forEach((res, i) => {
     const h = res.hourly;

@@ -28,15 +28,32 @@ function fileFor(id) {
   return path.join(BBK_DIR, `${encodeURIComponent(id)}.geojson`);
 }
 
-async function getJson(url) {
-  const res = await fetch(url, {
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    cache: 'no-store',
-    headers: { accept: 'application/json', 'user-agent': UA }
-  });
-  if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
-  return res.json();
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Mit Wiederholung: warnung.bund.de liefert gelegentlich eine unvollständige
+// Zertifikatskette (UNABLE_TO_VERIFY_LEAF_SIGNATURE) oder läuft ins Timeout.
+async function getJson(url, tries = 3) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    if (i) await sleep(i * 10000);
+    try {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: 'no-store',
+        headers: { accept: 'application/json', 'user-agent': UA }
+      });
+      if (res.status >= 400 && res.status < 500) throw Object.assign(new Error('HTTP ' + res.status + ' ' + url), { final: true });
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
+      return await res.json();
+    } catch (err) {
+      lastErr = err;
+      if (err.final) break;
+    }
+  }
+  throw lastErr;
 }
+
+const reason = (err) => err?.cause?.code || err?.message || String(err);
 
 async function main() {
   fs.mkdirSync(BBK_DIR, { recursive: true });
@@ -51,8 +68,14 @@ async function main() {
   }
 
   for (const id of wanted) {
-    const geo = await getJson(`${API}/warnings/${encodeURIComponent(id)}.geojson`);
-    fs.writeFileSync(fileFor(id), JSON.stringify(geo), 'utf8');
+    try {
+      const geo = await getJson(`${API}/warnings/${encodeURIComponent(id)}.geojson`);
+      fs.writeFileSync(fileFor(id), JSON.stringify(geo), 'utf8');
+    } catch (err) {
+      // eine fehlende Fläche ist kein Grund, den ganzen Lauf scheitern zu lassen;
+      // eine schon vorhandene Datei bleibt stehen
+      console.log(`::warning::BBK-Fläche ${id} nicht abrufbar (${reason(err)})`);
+    }
   }
 
   // veraltete geojson-Dateien entfernen (Warnung abgelaufen oder entwarnt)
@@ -64,6 +87,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+  // Quelle nicht erreichbar: alter Spiegel bleibt stehen, der nächste Lauf (in 10 min) holt nach.
+  console.log(`::warning::BBK-Daten nicht abrufbar (${reason(err)}) — Spiegel bleibt auf altem Stand`);
 });
