@@ -1,6 +1,6 @@
 # SelfStorm — Konzept
 
-> **Status:** Umgesetzt — Ampel-Webseite und Wächter laufen (Dokument beschreibt das ursprüngliche Konzept)
+> **Status:** Umgesetzt — die Ampel-Webseite läuft; der Wächter (Phase 2) wurde am 27.10.2026 wieder entfernt (Dokument beschreibt das ursprüngliche Konzept)
 > **Stand:** 2026-07-15
 > **Idee:** Sven
 

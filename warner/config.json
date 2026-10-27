@@ -1,6 +1,0 @@
-{
-  "_hinweis": "Vorlage. Die echten Orte stehen NICHT hier (öffentliches Repo), sondern im GitHub-Secret WARNER_LOCATIONS als JSON-Liste, z. B. [{\"name\": \"Kassel\", \"lat\": 51.31, \"lon\": 9.49}]. Lokal: Umgebungsvariable WARNER_LOCATIONS setzen oder Orte hier eintragen (nicht committen).",
-  "notifyLevel": 3,
-  "forecastDays": 3,
-  "locations": []
-}

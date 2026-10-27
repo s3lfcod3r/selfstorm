@@ -5,6 +5,10 @@ Neueste Version zuerst. Die Versionsnummern wurden nachträglich aus der Git-His
 
 ---
 
+## 0.5.0 · October 2026
+- 🇬🇧 **Personal watcher removed** (hourly workflow, `warner/check.mjs`, location template and state file) — no personal location is stored in the repo any more. Website, map and BBK mirror are unchanged.
+- 🇩🇪 **Persönlicher Wächter entfernt** (stündlicher Workflow, `warner/check.mjs`, Orts-Vorlage und Statusdatei) — im Repo ist kein persönlicher Ort mehr gespeichert. Webseite, Karte und BBK-Spiegel bleiben unverändert.
+
 ## 0.4.0 · October 2026
 - 🇬🇧 **BBK / MoWaS warnings** on the main and map page (warning areas on the Germany map, location check, all-clears labelled); warnings mirrored into the repo every 10 min because of CORS; DWD outages are distinguished from "no warnings"; README in Self standard.
 - 🇩🇪 **BBK-/MoWaS-Warnungen** auf Haupt- und Kartenseite (Warngebiete auf der Deutschlandkarte, Standortprüfung, Entwarnungen beschriftet); Warnungen werden wegen CORS alle 10 min ins Repo gespiegelt; DWD-Ausfälle werden von „keine Warnungen“ unterschieden; README nach Self-Standard.

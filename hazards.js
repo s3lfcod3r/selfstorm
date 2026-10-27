@@ -1,5 +1,5 @@
-// SelfStorm Gefahren-Heuristik — EINE Quelle für Webseite (index.html), Wächter
-// (warner/check.mjs) und Karten-Vorrechner (map/build-grid.mjs).
+// SelfStorm Gefahren-Heuristik — EINE Quelle für Webseite (index.html) und
+// Karten-Vorrechner (map/build-grid.mjs).
 // Klassisches Script ohne Build-Schritt: im Browser als window.SelfStormHazards,
 // in Node per `import H from "../hazards.js"` (CommonJS-Export).
 (function (root, factory) {
