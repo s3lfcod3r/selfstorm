@@ -4,6 +4,7 @@
 // Die Gefahren-Heuristik kommt aus ../hazards.js (gemeinsam mit Webseite und Karte).
 
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
 import H from "../hazards.js";
 
 const FC = "https://api.open-meteo.com/v1/forecast";
@@ -15,6 +16,16 @@ const stateUrl = new URL("./state.json", import.meta.url);
 const cfg = JSON.parse(await fs.readFile(cfgUrl, "utf8"));
 let state = {};
 try { state = JSON.parse(await fs.readFile(stateUrl, "utf8")); } catch { /* erster Lauf */ }
+
+// Die echten Orte gehören nicht ins öffentliche Repo: Sie kommen aus dem Secret
+// WARNER_LOCATIONS (JSON-Liste wie in config.json). config.json dient nur als Vorlage.
+if (process.env.WARNER_LOCATIONS) cfg.locations = JSON.parse(process.env.WARNER_LOCATIONS);
+// Action-Logs sind öffentlich: Ortsnamen und Koordinaten dort ausblenden.
+if (process.env.GITHUB_ACTIONS) {
+  for (const l of cfg.locations) for (const v of [l.name, `${l.lat},${l.lon}`]) console.log(`::add-mask::${v}`);
+}
+// state.json liegt ebenfalls im Repo, deshalb Schlüssel als Hash statt "lat,lon".
+const stateKey = loc => createHash("sha256").update(`${loc.lat},${loc.lon}`).digest("hex").slice(0, 16);
 
 const NTFY_URL = process.env.NTFY_URL || "https://ntfy.sh";
 const NTFY_TOPIC = process.env.NTFY_TOPIC || "";
@@ -150,7 +161,9 @@ for (const loc of cfg.locations) {
   // Vorhersage weg: Ort NICHT überspringen — die amtliche DWD-Ebene wird trotzdem geprüft.
   const a = fc ? analyze(upcomingHours(fc)) : { events: [], peak: 0, peakTime: null, peakLabel: "", tags: new Set(), unknown: true };
   const dwd = await fetchDwd(loc);
-  const key = `${loc.lat},${loc.lon}`;
+  const key = stateKey(loc), oldKey = `${loc.lat},${loc.lon}`;
+  if (state[oldKey] && !state[key]) { state[key] = state[oldKey]; changed = true; } // altes Format übernehmen
+  if (oldKey in state) { delete state[oldKey]; changed = true; }
   const prev = (state[key] && typeof state[key] === "object") ? state[key] : {};
   const prevLevel = Number.isFinite(prev.level) ? prev.level : 0;
   const known = Array.isArray(prev.events) ? prev.events.filter(isEvent).map(x => ({ ...x })) : [];

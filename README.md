@@ -105,10 +105,11 @@ Open `http://localhost:8080` → the traffic light runs locally.
 
 ### ⚙️ Configuration
 
-The **watcher** reads its locations from [`warner/config.json`](warner/config.json) (`notifyLevel`, `forecastDays`, `locations` with `name`, `lat`, `lon`) and its channels from GitHub Actions secrets:
+The **watcher** reads `notifyLevel` and `forecastDays` from [`warner/config.json`](warner/config.json). Its locations and channels come from GitHub Actions secrets, so they never end up in the public repo:
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
+| `WARNER_LOCATIONS` | ✓ | – | Locations as JSON list, e.g. `[{"name": "Kassel", "lat": 51.31, "lon": 9.49}]` |
 | `NTFY_URL` | – | `https://ntfy.sh` | ntfy server |
 | `NTFY_TOPIC` | – | – | ntfy topic for push |
 | `SMTP_HOST` | – | – | Mail server (e-mail is skipped without SMTP config) |
@@ -127,7 +128,7 @@ The **watcher** reads its locations from [`warner/config.json`](warner/config.js
 - **No API keys** in the website — all weather sources are free and keyless
 - Warning texts are rendered with `textContent` (no HTML injection from foreign data); DWD requests with 12 s timeout and whitelist
 - Watcher secrets (ntfy, SMTP) live only as **GitHub Actions secrets**
-- **Deliberate trade-offs** (documented): the watcher's locations are in the public repo (`warner/config.json`); the audit of 29 Sep 2026 ([docs/PRUEFBERICHT.md](docs/PRUEFBERICHT.md)) lists open findings (e.g. watcher state saved despite a send error, missing `res.ok` check) — not yet fixed; no meteorological calibration
+- **Deliberate trade-offs** (documented): the watcher's locations live in a secret, its state file only stores hashes; the audit of 29 Sep 2026 ([docs/PRUEFBERICHT.md](docs/PRUEFBERICHT.md)) lists open findings (e.g. watcher state saved despite a send error, missing `res.ok` check) — not yet fixed; no meteorological calibration
 
 Security update history → [CHANGELOG.md](CHANGELOG.md) (entries marked 🔒).
 
@@ -259,10 +260,11 @@ python -m http.server 8080
 
 ### ⚙️ Konfiguration
 
-Der **Wächter** liest seine Orte aus [`warner/config.json`](warner/config.json) (`notifyLevel`, `forecastDays`, `locations` mit `name`, `lat`, `lon`) und seine Kanäle aus GitHub-Actions-Secrets:
+Der **Wächter** liest `notifyLevel` und `forecastDays` aus [`warner/config.json`](warner/config.json). Orte und Kanäle kommen aus GitHub-Actions-Secrets und landen so nie im öffentlichen Repo:
 
 | Variable | Pflicht | Standard | Zweck |
 |---|---|---|---|
+| `WARNER_LOCATIONS` | ✓ | – | Orte als JSON-Liste, z. B. `[{"name": "Kassel", "lat": 51.31, "lon": 9.49}]` |
 | `NTFY_URL` | – | `https://ntfy.sh` | ntfy-Server |
 | `NTFY_TOPIC` | – | – | ntfy-Topic für Push |
 | `SMTP_HOST` | – | – | Mailserver (ohne SMTP-Daten wird die E-Mail übersprungen) |
@@ -281,7 +283,7 @@ Der **Wächter** liest seine Orte aus [`warner/config.json`](warner/config.json)
 - **Keine API-Keys** in der Webseite — alle Wetterquellen sind kostenlos und ohne Schlüssel
 - Warntexte werden per `textContent` ausgegeben (kein HTML aus Fremddaten); DWD-Abfragen mit 12-s-Timeout und Erlaubnisliste
 - Wächter-Zugangsdaten (ntfy, SMTP) liegen nur als **GitHub-Actions-Secrets** vor
-- **Bewusste Kompromisse** (dokumentiert): Die Orte des Wächters stehen im öffentlichen Repo (`warner/config.json`); der Prüfbericht vom 29.09.2026 ([docs/PRUEFBERICHT.md](docs/PRUEFBERICHT.md)) nennt offene Befunde (z. B. Wächter-Stand wird trotz Versandfehler gespeichert, fehlende `res.ok`-Prüfung) — noch nicht behoben; keine meteorologische Kalibrierung
+- **Bewusste Kompromisse** (dokumentiert): Die Orte des Wächters liegen in einem Secret, die Statusdatei speichert nur Hashes; der Prüfbericht vom 29.09.2026 ([docs/PRUEFBERICHT.md](docs/PRUEFBERICHT.md)) nennt offene Befunde (z. B. Wächter-Stand wird trotz Versandfehler gespeichert, fehlende `res.ok`-Prüfung) — noch nicht behoben; keine meteorologische Kalibrierung
 
 Verlauf der Sicherheitsupdates → [CHANGELOG.md](CHANGELOG.md) (Einträge mit 🔒).
 

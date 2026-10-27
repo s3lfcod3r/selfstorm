@@ -36,6 +36,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           MAIL_TO: ${{ secrets.MAIL_TO }}
+          WARNER_LOCATIONS: ${{ secrets.WARNER_LOCATIONS }}
         run: node check.mjs
 
       - name: Alarm-Status sichern
