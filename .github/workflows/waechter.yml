@@ -45,8 +45,14 @@ jobs:
             git config user.email "bot@selfcoder.de"
             git add warner/state.json
             git commit -m "chore(waechter): Alarm-Status aktualisiert [skip ci]"
-            git pull --rebase origin main
-            git push
+            # Push mit Wiederholung: GitHub lehnt gelegentlich kurz ab
+            # ("fatal error in commit_refs") oder ein anderer Bot war schneller.
+            for i in 1 2 3; do
+              git pull --rebase origin main && git push && exit 0
+              echo "Push fehlgeschlagen (Versuch $i), neuer Versuch in 15 s"
+              sleep 15
+            done
+            exit 1
           else
             echo "kein State-Wechsel"
           fi
