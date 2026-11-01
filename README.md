@@ -9,6 +9,7 @@
 [![License](https://img.shields.io/badge/license-All%20rights%20reserved-8A9CAA)](LICENSE)
 ![Web](https://img.shields.io/badge/web-HTML%20%2B%20JS-43D3AD)
 [![Live](https://img.shields.io/badge/live-wetter.selfcoder.de-6F95AD)](https://wetter.selfcoder.de)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-support%20me-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/s3lfcod3r)
 
 **[🇬🇧 English](#-english) · [🇩🇪 Deutsch](#-deutsch)**
 
@@ -269,6 +270,16 @@ node tests/bbk-fetch.cjs
 - [ ] **Phase 3** — Feinschliff, offene Prüfbefunde beheben, App
 
 <p align="right"><a href="#-deutsch">⬆ nach oben</a></p>
+
+---
+
+## ☕ Support / Unterstützen
+
+**🇬🇧** This project is free for private use and built in my spare time. If it saves you time, a coffee keeps the next update coming. No pressure, a ⭐ on the repo helps too!
+
+**🇩🇪** Dieses Projekt ist für private Nutzung kostenlos und entsteht in meiner Freizeit. Wenn es dir Zeit spart, hält ein Kaffee das nächste Update am Laufen. Kein Muss, ein ⭐ auf dem Repo hilft auch!
+
+<a href="https://ko-fi.com/s3lfcod3r"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support me on Ko-fi" /></a>
 
 ---
 
