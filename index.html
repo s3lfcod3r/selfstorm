@@ -274,6 +274,12 @@
   .info-body .lv{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:6px}
   .toolbar{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:12px;flex-wrap:wrap}
   .toolbar .updated{color:var(--muted);font-size:.82rem}
+
+/* Ko-fi: kleines Kaffee-Symbol, immer unten links */
+.self-kofi{position:fixed;left:14px;bottom:14px;z-index:900;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:var(--self-bg-2,#161a22);border:1px solid var(--self-line-strong,#2c3340);color:var(--self-text-2,#9aa4b2);opacity:.8;transition:opacity .2s,color .2s,border-color .2s;-webkit-tap-highlight-color:transparent}
+.self-kofi:hover,.self-kofi:focus-visible{opacity:1;color:#FF5E5B;border-color:#FF5E5B}
+.self-kofi svg{width:19px;height:19px}
+@media print{.self-kofi{display:none}}
 </style>
 <link rel="stylesheet" href="bbk.css" />
 </head>
@@ -1044,5 +1050,6 @@
 <script src="bbk-geo.js"></script>
 <script src="bbk-view.js"></script>
 <script src="bbk.js"></script>
+<a class="self-kofi" href="https://ko-fi.com/s3lfcod3r" target="_blank" rel="noopener" title="Ko-fi ☕ Unterstützen / Support" aria-label="Ko-fi: Unterstützen / Support"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 9h1.5a2.5 2.5 0 0 1 0 5H17M8 3.5V5M12 3.5V5"/></svg></a>
 </body>
 </html>
